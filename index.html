@@ -400,6 +400,12 @@ section[hidden]{display:none}
 .adm-out .pts{font-family:var(--mono);color:var(--emerald);font-weight:700}
 .adm-out button{font-size:11px;padding:4px 9px}
 .winmark{font-size:10px;font-weight:800;color:var(--emerald);background:var(--emerald-ghost);padding:2px 6px;border-radius:6px}
+.admtabs{display:flex;gap:4px;overflow-x:auto;margin:0 0 16px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px;scrollbar-width:none}
+.admtabs::-webkit-scrollbar{display:none}
+.admtab{flex:none;border:none;background:transparent;color:var(--text-2);font-weight:700;font-size:12.5px;padding:8px 13px;border-radius:9px;white-space:nowrap;cursor:pointer}
+.admtab.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F}
+.adm-out input.ptsedit{width:74px;flex:none;background:var(--ink-2);border:1px solid var(--line);color:var(--emerald);font-family:var(--mono);font-weight:700;border-radius:8px;padding:5px 7px;text-align:right}
+.adm-out input.ptsedit:focus{outline:none;border-color:var(--emerald)}
 
 /* toast */
 #toast{
@@ -414,6 +420,27 @@ section[hidden]{display:none}
 
 .foot{text-align:center;color:var(--muted);font-size:12px;padding:30px 0 40px}
 .foot code{font-family:var(--mono);color:var(--text-2)}
+.bankroll{position:sticky;top:64px;z-index:5;background:linear-gradient(180deg,var(--surface),var(--ink-2));border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.bk-top{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--text-2)}
+.bk-top b{font-size:21px;color:var(--emerald);margin-left:auto;font-family:var(--mono)}
+.bk-top b.over{color:var(--red)}
+.bk-of{color:var(--muted);font-size:12px}
+.bk-bar{height:7px;border-radius:4px;background:var(--surface-3);margin-top:9px;overflow:hidden}
+.bk-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--emerald-dim),var(--emerald));transition:width .2s}
+.stake-row{display:flex;align-items:center;gap:12px;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
+.stake-input{display:flex;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:6px 11px}
+.stake-input>span{color:var(--muted);font-weight:700}
+.stake-input input{width:88px;background:transparent;border:none;color:var(--text);font-family:var(--mono);font-weight:700;font-size:16px}
+.stake-input input:focus{outline:none}
+.to-win{font-size:13px;color:var(--text-2)}
+.to-win b{font-family:var(--mono);color:var(--emerald)}
+.awards{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px;scrollbar-width:none}
+.awards::-webkit-scrollbar{display:none}
+.award-card{flex:none;width:148px;background:linear-gradient(180deg,var(--surface),var(--ink-2));border:1px solid var(--line);border-radius:13px;padding:12px 13px}
+.aw-ic{font-size:18px;line-height:1}
+.aw-lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:7px}
+.aw-name{font-weight:800;font-size:14px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aw-val{font-size:13px;color:var(--emerald);font-weight:700;margin-top:2px}
 
 @media (max-width:520px){
   .slip-grid{grid-template-columns:repeat(3,1fr)}
@@ -450,6 +477,9 @@ const SUPABASE_KEY = "sb_publishable_u4MyKCJyBnygNiMAqjfavw_mkpDHcID";
    Updates are instant via Supabase Realtime. This is only a backstop refetch
    in case a live message is ever missed or the connection blips.           */
 const POLL_SECONDS = 20;
+
+/* ---- starting wallet each player gets to spread across their tips -------- */
+const STARTING_BANKROLL = 1000;
 
 /* ---- 3) SEED DATA --------------------------------------------------------
    Your LIVE data now lives in Supabase, not here. This block is used only by
@@ -491,10 +521,10 @@ const SEED = {
       { id:"m4d", label:"1-2 Arsenal", points:13.0 } ] }
   ],
   submissions: [
-    { participantId:"p1", selections:{ m1:"m1a", m2:"m2a", m3:"m3a", m4:"m4a" } },
-    { participantId:"p3", selections:{ m1:"m1c", m2:"m2b", m3:"m3a", m4:"m4d" } },
-    { participantId:"p4", selections:{ m1:"m1b", m2:"m2c", m3:"m3b", m4:"m4b" } },
-    { participantId:"p5", selections:{ m1:"m1a", m2:"m2d", m3:"m3a" } }
+    { participantId:"p1", selections:{ m1:{outcomeId:"m1a",stake:300}, m2:{outcomeId:"m2a",stake:200}, m3:{outcomeId:"m3a",stake:300}, m4:{outcomeId:"m4a",stake:100} } },
+    { participantId:"p3", selections:{ m1:{outcomeId:"m1c",stake:250}, m2:{outcomeId:"m2b",stake:250}, m3:{outcomeId:"m3a",stake:300}, m4:{outcomeId:"m4d",stake:200} } },
+    { participantId:"p4", selections:{ m1:{outcomeId:"m1b",stake:200}, m2:{outcomeId:"m2c",stake:200}, m3:{outcomeId:"m3b",stake:400}, m4:{outcomeId:"m4b",stake:200} } },
+    { participantId:"p5", selections:{ m1:{outcomeId:"m1a",stake:400}, m2:{outcomeId:"m2d",stake:200}, m3:{outcomeId:"m3a",stake:200} } }
   ],
   sgmBets: [
     { id:"s1", participantId:"p1", url:"https://stake.com/sports/share/abc123", description:"4-leg City rout SGM",     stake:5,  odds:25.0, potentialReturn:125.0, status:"won" },
@@ -560,6 +590,7 @@ const SEED = {
         <h2>Standings</h2>
         <span class="hint">Tap a player for full slip</span>
       </div>
+      <div id="awardsStrip"></div>
       <div class="lb" id="lbList"></div>
     </section>
 
@@ -668,32 +699,42 @@ async function commit(msg){
 /* =========================================================================
    COMPUTE  (pure scoring — single source of truth)
    ========================================================================= */
+function pickOf(sel){
+  if(!sel) return null;
+  if(typeof sel==="string") return { outcomeId:sel, stake:0 };
+  return { outcomeId: (sel.outcomeId!=null?sel.outcomeId:sel.o), stake: Number(sel.stake!=null?sel.stake:(sel.s||0))||0 };
+}
 function findParticipant(id){ return state.participants.find(p=>p.id===id); }
 function findMarket(id){ return state.markets.find(m=>m.id===id); }
 function findOutcome(market, oid){ return market && market.outcomes.find(o=>o.id===oid); }
 function getSubmission(pid){ return state.submissions.find(s=>s.participantId===pid) || null; }
 
 function scoreParticipant(pid){
-  let tipPoints=0, winningTips=0, losingTips=0;
+  let tipPoints=0, winningTips=0, losingTips=0, tipStaked=0, bestSingleWin=0;
   const sub = getSubmission(pid);
   if(sub){
     for(const m of state.markets){
-      const pick = sub.selections[m.id];
-      if(!pick) continue;
+      const pk = pickOf(sub.selections[m.id]);
+      if(!pk || !pk.outcomeId || pk.stake<=0) continue;
+      tipStaked += pk.stake;
       if(!m.winningOutcomeId) continue;
-      if(pick === m.winningOutcomeId){
-        const o = findOutcome(m, pick);
-        tipPoints += o ? Number(o.points) : 0;
-        winningTips++;
+      if(pk.outcomeId === m.winningOutcomeId){
+        const o = findOutcome(m, pk.outcomeId);
+        const win = pk.stake * (o?Number(o.points):0);
+        tipPoints += win; winningTips++;
+        if(win>bestSingleWin) bestSingleWin=win;
       } else { losingTips++; }
     }
   }
   const mySgms = state.sgmBets.filter(b=>b.participantId===pid);
-  let sgmPoints = 0;
-  for(const b of mySgms){ if(b.status==="won") sgmPoints += Number(b.potentialReturn)||0; }
+  let sgmPoints=0, sgmWon=0, bestSgmWin=0;
+  for(const b of mySgms){ if(b.status==="won"){ const r=Number(b.potentialReturn)||0; sgmPoints+=r; sgmWon++; if(r>bestSgmWin) bestSgmWin=r; } }
+  const roi = tipStaked>0 ? (tipPoints - tipStaked)/tipStaked : null;
   return {
-    tipPoints: round2(tipPoints), sgmPoints: round2(sgmPoints), total: round2(tipPoints+sgmPoints),
-    winningTips, losingTips, sgmCount: mySgms.length
+    tipPoints:round2(tipPoints), sgmPoints:round2(sgmPoints), total:round2(tipPoints+sgmPoints),
+    winningTips, losingTips, sgmCount:mySgms.length, sgmWon,
+    tipStaked:round2(tipStaked), bestSingleWin:round2(bestSingleWin), bestSgmWin:round2(bestSgmWin),
+    betsWon: winningTips+sgmWon, roi
   };
 }
 function computeStandings(){
@@ -705,8 +746,33 @@ function computeStandings(){
   rows.forEach((r,i)=>{ r.rank=i+1; r.movement=(typeof r.previousRank==="number")?(r.previousRank-r.rank):0; });
   return rows;
 }
+function computeAwards(){
+  const rows = computeStandings();
+  function leader(fn){ let best=null; for(const r of rows){ const v=fn(r); if(v==null) continue; if(best==null||v>best.value) best={id:r.id,name:r.name,value:v}; } return best; }
+  return {
+    overall:       (rows[0] && rows[0].total>0) ? {id:rows[0].id,name:rows[0].name,value:rows[0].total} : null,
+    highestSingle: leader(r=>r.bestSingleWin>0?r.bestSingleWin:null),
+    mostWon:       leader(r=>r.betsWon>0?r.betsWon:null),
+    highestSgm:    leader(r=>r.bestSgmWin>0?r.bestSgmWin:null),
+    roi:           leader(r=>r.roi)
+  };
+}
+function renderAwards(){
+  const host=document.getElementById("awardsStrip"); if(!host) return;
+  const a=computeAwards();
+  const cards=[
+    {ic:"🏆", lab:"Overall points", d:a.overall,       fmt:v=>fmtPts(v)+" pts"},
+    {ic:"🚀", lab:"Highest single", d:a.highestSingle, fmt:v=>fmtPts(v)+" pts"},
+    {ic:"🎯", lab:"Most bets won",  d:a.mostWon,       fmt:v=>v+" won"},
+    {ic:"💥", lab:"Top SGM win",    d:a.highestSgm,    fmt:v=>fmtPts(v)+" pts"},
+    {ic:"📈", lab:"Best ROI",       d:a.roi,           fmt:v=>fmtRoi(v)}
+  ].filter(c=>c.d);
+  if(!cards.length){ host.innerHTML=""; return; }
+  host.innerHTML = `<div class="awards">`+cards.map(c=>`<div class="award-card"><div class="aw-ic">${c.ic}</div><div class="aw-lab">${c.lab}</div><div class="aw-name">${esc(c.d.name)}</div><div class="aw-val mono">${c.fmt(c.d.value)}</div></div>`).join("")+`</div>`;
+}
 function round2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
 function fmtPts(n){ const v=round2(n); return Number.isInteger(v)?String(v):v.toFixed(2).replace(/\.?0+$/,""); }
+function fmtRoi(roi){ if(roi==null) return "—"; return (roi>=0?"+":"")+Math.round(roi*100)+"%"; }
 function money(n){ return "$"+(round2(n)).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2}); }
 function initials(name){ return name.split(/\s+/).slice(0,2).map(s=>s[0]||"").join("").toUpperCase(); }
 function relTime(ts){
@@ -776,6 +842,7 @@ function renderCountdown(){
 function renderLeaderboard(){
   const rows = computeStandings();
   const host = $("#lbList");
+  renderAwards();
   if(!rows.length){ host.innerHTML = emptyBox("No players yet","Add participants in the admin panel."); return; }
   host.innerHTML = rows.map(r=>{
     const medal = r.rank<=3 ? "r"+r.rank : "";
@@ -802,6 +869,22 @@ function renderLeaderboard(){
   }).join("");
 }
 
+function draftStaked(){ let s=0; for(const k in draftPicks){ const pk=pickOf(draftPicks[k]); if(pk && pk.stake>0) s+=pk.stake; } return round2(s); }
+function bankrollInner(remain){
+  const pct=Math.max(0,Math.min(100, remain/STARTING_BANKROLL*100));
+  return `<div class="bk-top"><span>Balance</span><b class="mono ${remain<0?'over':''}">$${fmtPts(remain)}</b><span class="bk-of">of $${STARTING_BANKROLL}</span></div><div class="bk-bar"><span style="width:${pct}%"></span></div>`;
+}
+function updateStakeUI(changedMid){
+  if(changedMid){
+    const m=findMarket(changedMid); const pk=pickOf(draftPicks[changedMid]);
+    const o=(pk&&pk.outcomeId)?findOutcome(m,pk.outcomeId):null;
+    const el=document.querySelector('[data-towin="'+changedMid+'"]');
+    if(el) el.textContent=(o&&pk.stake>0)?fmtPts(pk.stake*Number(o.points)):"—";
+  }
+  const remain=STARTING_BANKROLL-draftStaked();
+  const bar=document.getElementById("bankrollBar"); if(bar) bar.innerHTML=bankrollInner(remain);
+  const btn=document.getElementById("submitTips"); if(btn) btn.disabled=remain<0;
+}
 function renderTips(){
   const body = $("#tipsBody");
   const hint = $("#tipsHint");
@@ -814,49 +897,61 @@ function renderTips(){
 
   if(sub){
     const sc = scoreParticipant(pid);
-    let html = `<div class="notice lock"><span class="ic">🔒</span><div><strong>Your tips are locked.</strong> Submitted ${relTime(sub.submittedAt)}. ${anySettled()?`You've banked <b class="mono">${fmtPts(sc.tipPoints)}</b> tip points so far.`:`Results pending.`}</div></div>`;
-    html += state.markets.map(m=>renderMarketReadonly(m, sub.selections[m.id])).join("");
+    const betMarkets = state.markets.filter(m=>{ const pk=pickOf(sub.selections[m.id]); return pk && pk.outcomeId; });
+    let html = `<div class="notice lock"><span class="ic">🔒</span><div><strong>Your tips are locked.</strong> $${fmtPts(sc.tipStaked)} staked across ${betMarkets.length} tip${betMarkets.length===1?'':'s'}, submitted ${relTime(sub.submittedAt)}. ${anySettled()?`Banked <b class="mono">${fmtPts(sc.tipPoints)}</b> pts so far.`:`Results pending.`}</div></div>`;
+    html += betMarkets.map(m=>renderMarketReadonly(m, sub.selections[m.id])).join("");
     body.innerHTML = html; return;
   }
   if(!compOpen){
     body.innerHTML = `<div class="notice warn"><span class="ic">⏳</span><div><strong>Tips are closed.</strong> The competition status is "${esc(state.competition.status)}" so new slips can't be submitted.</div></div>`;
     return;
   }
-  let html = `<div class="notice"><span class="ic">✏️</span><div>Pick one outcome per market, then lock it in. <b>You can only submit once.</b> Numbers shown are the points (decimal odds) you bank if correct.</div></div>`;
+  const remain = STARTING_BANKROLL - draftStaked();
+  let html = `<div class="notice"><span class="ic">✏️</span><div>You've got <b>$${STARTING_BANKROLL}</b> to spread across your tips. Back an outcome, set a stake — a winner pays <b>stake × price</b> in points. <b>One submission only.</b></div></div>`;
+  html += `<div class="bankroll" id="bankrollBar">${bankrollInner(remain)}</div>`;
   html += state.markets.map(m=>renderMarketForm(m)).join("");
-  html += `<button class="btn primary block" id="submitTips" style="margin-top:4px">Lock in my tips</button>`;
+  html += `<button class="btn primary block" id="submitTips" style="margin-top:4px"${remain<0?' disabled':''}>Lock in my tips</button>`;
   body.innerHTML = html;
 }
 function anySettled(){ return state.markets.some(m=>m.winningOutcomeId); }
 
 function renderMarketForm(m){
+  const pk = pickOf(draftPicks[m.id]) || {};
   const outs = m.outcomes.map(o=>{
-    const sel = draftPicks[m.id]===o.id ? " sel" : "";
-    return `<button class="outcome${sel}" data-pick="${m.id}:${o.id}" type="button">
-      <span class="ol">${esc(o.label)}</span><span class="odds">${fmtPts(o.points)}</span>
-    </button>`;
+    const sel = pk.outcomeId===o.id ? " sel" : "";
+    return `<button class="outcome${sel}" data-pick="${m.id}:${o.id}" type="button"><span class="ol">${esc(o.label)}</span><span class="odds">${fmtPts(o.points)}</span></button>`;
   }).join("");
+  const hasPick = !!pk.outcomeId;
+  const o = hasPick ? findOutcome(m, pk.outcomeId) : null;
+  const toWin = (o && pk.stake>0) ? fmtPts(pk.stake*Number(o.points)) : "—";
   return `<div class="card market" data-market="${m.id}">
-    <div class="market-head"><span class="mname">${esc(m.name)}</span><span class="market-state">Choose one</span></div>
+    <div class="market-head"><span class="mname">${esc(m.name)}</span><span class="market-state">${hasPick?'Set your stake':'Choose one'}</span></div>
     <div class="outcomes">${outs}</div>
+    <div class="stake-row" ${hasPick?'':'hidden'}>
+      <div class="stake-input"><span>$</span><input type="number" inputmode="decimal" min="0" step="1" data-stake="${m.id}" value="${pk.stake>0?pk.stake:''}" placeholder="0"/></div>
+      <span class="to-win">to win <b data-towin="${m.id}">${toWin}</b></span>
+    </div>
   </div>`;
 }
-function renderMarketReadonly(m, pickId){
+function renderMarketReadonly(m, sel){
+  const pk = pickOf(sel);
   const settled = !!m.winningOutcomeId;
   const outs = m.outcomes.map(o=>{
-    const isPick = o.id===pickId;
+    const isPick = pk && pk.outcomeId===o.id;
     const isWin = settled && o.id===m.winningOutcomeId;
-    let cls = "outcome"; if(isPick) cls+=" sel";
+    let cls="outcome"; if(isPick) cls+=" sel";
     if(settled){ if(isWin) cls+=" won"; else cls+=" lost"; }
     return `<button class="${cls}" disabled type="button"><span class="ol">${esc(o.label)}</span><span class="odds">${fmtPts(o.points)}</span></button>`;
   }).join("");
-  let tag = '<span class="market-state">Pending</span>';
-  if(settled && pickId){
-    const po = findOutcome(m,pickId);
-    tag = pickId===m.winningOutcomeId
-      ? `<span class="result-tag won">Won +${fmtPts(po?po.points:0)}</span>`
-      : `<span class="result-tag lost">Lost</span>`;
-  } else if(settled){ tag = '<span class="market-state settled">Settled</span>'; }
+  let tag='<span class="market-state">Pending</span>';
+  if(pk && pk.outcomeId){
+    if(settled){
+      const po=findOutcome(m,pk.outcomeId);
+      tag = pk.outcomeId===m.winningOutcomeId
+        ? `<span class="result-tag won">Won +${fmtPts(pk.stake*(po?Number(po.points):0))}</span>`
+        : `<span class="result-tag lost">Lost $${fmtPts(pk.stake)}</span>`;
+    } else { tag = `<span class="market-state">$${fmtPts(pk.stake)} on</span>`; }
+  } else if(settled){ tag='<span class="market-state settled">Settled</span>'; }
   return `<div class="card market"><div class="market-head"><span class="mname">${esc(m.name)}</span>${tag}</div><div class="outcomes">${outs}</div></div>`;
 }
 
@@ -909,15 +1004,18 @@ function openProfile(pid){
   let tipsHtml;
   if(sub){
     tipsHtml = state.markets.map(m=>{
-      const pickId = sub.selections[m.id];
-      if(!pickId) return "";
-      const o = findOutcome(m,pickId);
+      const pk = pickOf(sub.selections[m.id]);
+      if(!pk || !pk.outcomeId) return "";
+      const o = findOutcome(m,pk.outcomeId);
       if(!o) return "";
       const settled = !!m.winningOutcomeId;
-      let cls="pending", pv=`${fmtPts(o.points)}`, note="Pending";
-      if(settled){ if(pickId===m.winningOutcomeId){ cls="won"; pv=`+${fmtPts(o.points)}`; note="Won"; } else { cls="lost"; pv="0"; note="Lost"; } }
-      return `<div class="pick-row ${cls}"><div class="pk"><div class="mk">${esc(m.name)} · ${note}</div><div class="ch">${esc(o.label)}</div></div><div class="pv">${pv}</div></div>`;
-    }).join("") || `<div class="empty"><strong>No picks recorded</strong>This slip is empty.</div>`;
+      let cls="pending", pv, note="Pending";
+      if(settled){
+        if(pk.outcomeId===m.winningOutcomeId){ cls="won"; pv="+"+fmtPts(pk.stake*Number(o.points)); note="Won"; }
+        else { cls="lost"; pv="0"; note="Lost"; }
+      } else { pv=fmtPts(pk.stake*Number(o.points)); }
+      return `<div class="pick-row ${cls}"><div class="pk"><div class="mk">${esc(m.name)} · $${fmtPts(pk.stake)} @ ${fmtPts(o.points)} · ${note}</div><div class="ch">${esc(o.label)}</div></div><div class="pv">${pv}</div></div>`;
+    }).join("") || `<div class="empty"><strong>No tips backed</strong>This slip is empty.</div>`;
   } else {
     tipsHtml = `<div class="empty"><strong>No tip slip submitted</strong>${esc(p.name)} hasn't locked in tips.</div>`;
   }
@@ -936,7 +1034,7 @@ function openProfile(pid){
       <div class="c"><div class="v">${fmtPts(sc.sgmPoints)}</div><div class="l">SGM pts</div></div>
       <div class="c"><div class="v">#${rank}</div><div class="l">Rank</div></div>
     </div>
-    <div class="detail-h">Tips · ${sc.winningTips}W ${sc.losingTips}L</div>
+    <div class="detail-h">Tips · ${sc.winningTips}W ${sc.losingTips}L · $${fmtPts(sc.tipStaked)} staked · ROI ${fmtRoi(sc.roi)}</div>
     ${tipsHtml}
     <div class="detail-h">Same Game Multis · ${sc.sgmCount}</div>
     ${sgmHtml}
@@ -967,6 +1065,7 @@ function openAdminLogin(){
   }
 }
 
+let adminTab = "competition";
 function renderAdminPanel(){
   const c = state.competition;
   const statuses = ["Open","Tips Locked","In Progress","Completed"];
@@ -979,8 +1078,9 @@ function renderAdminPanel(){
   const marketsHtml = state.markets.map(m=>{
     const outs = m.outcomes.map(o=>{
       const isWin = m.winningOutcomeId===o.id;
-      return `<div class="adm-out"><span class="lab">${esc(o.label)}</span><span class="pts">${fmtPts(o.points)}</span>
-        ${isWin?'<span class="winmark">WON</span>':`<button class="btn sm" data-adm="setWin" data-val="${m.id}:${o.id}">Mark won</button>`}
+      return `<div class="adm-out"><span class="lab">${esc(o.label)}</span>
+        <input class="ptsedit" type="number" step="0.01" min="0" data-editout="${o.id}" value="${o.points}" title="Price (decimal odds)"/>
+        ${isWin?'<span class="winmark">WON</span>':`<button class="btn sm" data-adm="setWin" data-val="${m.id}:${o.id}">Win</button>`}
         <button class="btn sm danger" data-adm="rmOut" data-val="${m.id}:${o.id}">✕</button></div>`;
     }).join("");
     return `<div class="adm-market">
@@ -988,7 +1088,7 @@ function renderAdminPanel(){
         <span>${m.winningOutcomeId?`<button class="btn sm" data-adm="clearWin" data-val="${m.id}">Unsettle</button>`:''}
         <button class="btn sm danger" data-adm="rmMarket" data-val="${m.id}">Delete</button></span></div>
       ${outs}
-      <div class="inline-add"><input placeholder="Outcome label" data-add="outLabel:${m.id}"/><input placeholder="Pts" type="number" step="0.01" style="max-width:80px" data-add="outPts:${m.id}"/><button class="btn sm" data-adm="addOut" data-val="${m.id}">Add</button></div>
+      <div class="inline-add"><input placeholder="Outcome label" data-add="outLabel:${m.id}"/><input placeholder="Price" type="number" step="0.01" style="max-width:84px" data-add="outPts:${m.id}"/><button class="btn sm" data-adm="addOut" data-val="${m.id}">Add</button></div>
     </div>`;
   }).join("") || `<div class="calc-note">No markets yet.</div>`;
 
@@ -1001,29 +1101,25 @@ function renderAdminPanel(){
         <button class="btn sm" data-adm="sgmStatus" data-val="${b.id}:pending">P</button></span></div>`;
   }).join("") : `<div class="calc-note">No SGMs submitted.</div>`;
 
-  modal("Admin panel", state.competition.name, `
-    <div class="admin-sec"><div class="h">Competition</div><div class="admin-card">
+  const sections = {
+    competition: `<div class="admin-card">
       <div class="field"><label>Competition name</label><input data-edit="comp.name" value="${esc(c.name)}"/></div>
       <div class="field"><label>Event</label><input data-edit="comp.eventName" value="${esc(c.eventName)}"/></div>
       <div class="field"><label>Start time</label><input data-edit="comp.startTime" type="datetime-local" value="${toLocalInput(c.startTime)}"/></div>
       <label class="eyebrow" style="display:block;margin-bottom:7px">Status</label>
       <div class="btn-grid">${statusBtns}</div>
       <div style="margin-top:10px"><button class="btn sm block" data-adm="lockAll">🔒 Lock all tips (set status to Tips Locked)</button></div>
-    </div></div>
-
-    <div class="admin-sec"><div class="h">Players</div><div class="admin-card">
+    </div>`,
+    players: `<div class="admin-card">
       ${participantList}
       <div class="inline-add"><input placeholder="New player name" data-add="newUser"/><button class="btn sm" data-adm="addUser">Add</button></div>
-    </div></div>
-
-    <div class="admin-sec"><div class="h">Markets &amp; outcomes</div><div class="admin-card">
+    </div>`,
+    markets: `<div class="admin-card">
       ${marketsHtml}
       <div class="inline-add"><input placeholder="New market name (e.g. Total Goals)" data-add="newMarket"/><button class="btn sm" data-adm="addMarket">Add market</button></div>
-    </div></div>
-
-    <div class="admin-sec"><div class="h">Settle SGMs</div><div class="admin-card">${sgmAdmin}</div></div>
-
-    <div class="admin-sec"><div class="h">Scoring &amp; tools</div><div class="admin-card">
+    </div>`,
+    sgms: `<div class="admin-card">${sgmAdmin}</div>`,
+    tools: `<div class="admin-card">
       <div class="btn-grid">
         <button class="btn sm" data-adm="recalc">↻ Refresh scores</button>
         <button class="btn sm" data-adm="snapshot">📸 Capture rank snapshot</button>
@@ -1032,8 +1128,13 @@ function renderAdminPanel(){
       </div>
       <div style="margin-top:10px"><button class="btn sm block ghost" data-adm="logout">Sign out of admin</button></div>
       <p class="calc-note" style="margin-top:10px">"Capture rank snapshot" freezes today's order so the ▲▼ arrows measure the next round of results. Everything here writes straight to your Supabase database and every player's device updates instantly.</p>
-    </div></div>
-  `, {wide:true});
+    </div>`
+  };
+
+  const tabs=[["competition","Comp"],["players","Players"],["markets","Markets"],["sgms","SGMs"],["tools","Tools"]];
+  if(!sections[adminTab]) adminTab="competition";
+  const tabBar=`<div class="admtabs">`+tabs.map(([k,l])=>`<button class="admtab ${k===adminTab?'active':''}" data-admtab="${k}">${esc(l)}</button>`).join("")+`</div>`;
+  modal("Admin panel", state.competition.name, tabBar+sections[adminTab], {wide:true});
 }
 
 /* one async helper so each admin action is: write -> resync -> repaint panel */
@@ -1133,6 +1234,14 @@ function toLocalInput(iso){
 }
 function fromLocalInput(v){ const d=new Date(v); return isNaN(d)?v:d.toISOString(); }
 
+async function updateOutcomePrice(oid, value){
+  const pts=parseFloat(value);
+  if(isNaN(pts)||pts<=0) return toast("Enter a valid price","err");
+  const { error } = await sb.from("outcomes").update({points:round2(pts)}).eq("id",oid);
+  if(error) return toast("Couldn't update price: "+error.message,"err");
+  await commit("Price updated");
+}
+
 async function resetToSeed(){
   if(!confirm("Reset ALL data back to the seed values? This wipes every tip and SGM and cannot be undone.")) return;
   try{
@@ -1163,10 +1272,14 @@ async function submitTips(){
   if(!pid) return toast("Pick your name first","err");
   if(state.competition.status!=="Open") return toast("Tips are closed","err");
   if(getSubmission(pid)) return toast("You've already submitted","err");
-  const picked=Object.keys(draftPicks).filter(k=>draftPicks[k]);
-  if(!picked.length) return toast("Make at least one pick","err");
-  if(!confirm("Lock in your tips? You can't change them after this.")) return;
-  const sel={}; picked.forEach(k=>sel[k]=draftPicks[k]);
+  const sel={}; let staked=0, n=0;
+  for(const m of state.markets){
+    const pk=pickOf(draftPicks[m.id]);
+    if(pk && pk.outcomeId && pk.stake>0){ sel[m.id]={outcomeId:pk.outcomeId, stake:round2(pk.stake)}; staked+=pk.stake; n++; }
+  }
+  if(!n) return toast("Back at least one tip with a stake","err");
+  if(round2(staked)>STARTING_BANKROLL) return toast("Over budget — you only have $"+STARTING_BANKROLL,"err");
+  if(!confirm("Lock in "+n+" tip"+(n===1?'':'s')+" for $"+fmtPts(staked)+"? You can't change them after this.")) return;
   const { error } = await sb.from("submissions").insert({ participant_id:pid, selections:sel, locked:true });
   if(error){ toast(/duplicate|unique/i.test(error.message)?"You've already submitted":("Couldn't submit: "+error.message),"err"); await commit(); return; }
   draftPicks={};
@@ -1246,7 +1359,7 @@ function friendlyError(e){
 let channel=null, pollTimer=null, refreshT=null;
 function refreshNow(){
   if(document.getElementById("bootOv")) return;       // not while disconnected
-  loadState().then(()=>{ renderHeader(); renderLeaderboard(); renderTips(); renderSGM(); }).catch(()=>{});
+  loadState().then(()=>{ renderHeader(); renderLeaderboard(); if(!Object.keys(draftPicks).length) renderTips(); renderSGM(); }).catch(()=>{});
 }
 function scheduleRefresh(){ clearTimeout(refreshT); refreshT=setTimeout(refreshNow, 250); }
 function onVisible(){ if(!document.hidden) scheduleRefresh(); }
@@ -1290,12 +1403,20 @@ function wire(){
   $("#sgmSubmit").addEventListener("click",submitSGM);
 
   document.addEventListener("click",e=>{
+    const at=e.target.closest("[data-admtab]"); if(at){ adminTab=at.dataset.admtab; renderAdminPanel(); return; }
     const prof=e.target.closest("[data-profile]"); if(prof){ openProfile(prof.dataset.profile); return; }
     const pick=e.target.closest("[data-pick]");
     if(pick){
-      const [mid,oid]=pick.dataset.pick.split(":"); draftPicks[mid]=oid;
+      const [mid,oid]=pick.dataset.pick.split(":");
+      const prev=pickOf(draftPicks[mid])||{stake:0};
+      draftPicks[mid]={ outcomeId:oid, stake:prev.stake||0 };
       pick.closest(".outcomes").querySelectorAll(".outcome").forEach(b=>b.classList.remove("sel"));
-      pick.classList.add("sel"); return;
+      pick.classList.add("sel");
+      const mk=pick.closest(".market");
+      const row=mk && mk.querySelector(".stake-row"); if(row) row.hidden=false;
+      const ms=mk && mk.querySelector(".market-state"); if(ms) ms.textContent="Set your stake";
+      updateStakeUI(mid);
+      return;
     }
     if(e.target.id==="submitTips"){ submitTips(); return; }
     const adm=e.target.closest("[data-adm]");
@@ -1305,9 +1426,19 @@ function wire(){
 
   document.addEventListener("blur",e=>{
     const ed=e.target.closest && e.target.closest("[data-edit]");
-    if(ed) handleAdminEdit(ed.dataset.edit, ed.value);
+    if(ed){ handleAdminEdit(ed.dataset.edit, ed.value); return; }
+    const eo=e.target.closest && e.target.closest("[data-editout]");
+    if(eo) updateOutcomePrice(eo.dataset.editout, eo.value);
   },true);
 
+  document.addEventListener("input",e=>{
+    const st=e.target.closest && e.target.closest("[data-stake]");
+    if(!st) return;
+    const mid=st.dataset.stake; let v=parseFloat(st.value); if(isNaN(v)||v<0) v=0;
+    const prev=pickOf(draftPicks[mid])||{};
+    draftPicks[mid]={ outcomeId:prev.outcomeId, stake:v };
+    updateStakeUI(mid);
+  });
   document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !document.getElementById("bootOv")) closeModal(); });
 }
 
