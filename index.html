@@ -427,7 +427,12 @@ section[hidden]{display:none}
 .bk-of{color:var(--muted);font-size:12px}
 .bk-bar{height:7px;border-radius:4px;background:var(--surface-3);margin-top:9px;overflow:hidden}
 .bk-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--emerald-dim),var(--emerald));transition:width .2s}
-.stake-row{display:flex;align-items:center;gap:12px;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
+.stake-row{display:flex;flex-direction:column;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
+.stake-main{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.qbtn{flex:none;background:var(--surface-2);border:1px solid var(--line);color:var(--text);font-weight:700;font-size:13px;padding:7px 13px;border-radius:9px;font-family:var(--mono)}
+.qbtn:hover{border-color:var(--emerald-dim);background:var(--surface-3)}
+.qbtn.clr{color:var(--muted);margin-left:auto;font-family:var(--sans);font-weight:600}
 .stake-input{display:flex;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:6px 11px}
 .stake-input>span{color:var(--muted);font-weight:700}
 .stake-input input{width:88px;background:transparent;border:none;color:var(--text);font-family:var(--mono);font-weight:700;font-size:16px}
@@ -494,12 +499,35 @@ const SEED = {
     status: "Open"
   },
   participants: [
-    { id:"p1", name:"Sam Okafor",   previousRank:1 },
-    { id:"p2", name:"Riya Sharma",  previousRank:3 },
-    { id:"p3", name:"Jordan Blake", previousRank:2 },
-    { id:"p4", name:"Lena Fischer", previousRank:5 },
-    { id:"p5", name:"Theo Marsh",   previousRank:4 },
-    { id:"p6", name:"Nadia Costa",  previousRank:6 }
+    { id:"p2", name:"Ryan" },
+    { id:"p3", name:"Ajay" },
+    { id:"p4", name:"Danielle" },
+    { id:"p5", name:"Jake" },
+    { id:"p6", name:"Angeline" },
+    { id:"p7", name:"Sushil" },
+    { id:"p8", name:"Simon" },
+    { id:"p9", name:"Julu" },
+    { id:"p10", name:"Ben" },
+    { id:"p11", name:"David" },
+    { id:"p12", name:"Anna" },
+    { id:"p13", name:"Rul" },
+    { id:"p14", name:"Long" },
+    { id:"p15", name:"Yutian" },
+    { id:"p16", name:"Charlie" },
+    { id:"p17", name:"Henry" },
+    { id:"p18", name:"Gavin" },
+    { id:"p19", name:"Ahilya" },
+    { id:"p20", name:"James" },
+    { id:"p21", name:"Tharusha" },
+    { id:"p22", name:"Deepen" },
+    { id:"p23", name:"Winnie" },
+    { id:"p24", name:"Alex" },
+    { id:"p25", name:"Carlos" },
+    { id:"p26", name:"Luis" },
+    { id:"p27", name:"Mingkai" },
+    { id:"p28", name:"Phillip" },
+    { id:"p29", name:"Chris" },
+    { id:"p30", name:"JD" }
   ],
   markets: [
     { id:"m1", name:"Match Winner", winningOutcomeId:null, outcomes:[
@@ -511,7 +539,7 @@ const SEED = {
       { id:"m2b", label:"B. Saka",    points:5.50 },
       { id:"m2c", label:"P. Foden",   points:6.00 },
       { id:"m2d", label:"K. Havertz", points:7.50 } ] },
-    { id:"m3", name:"Total Goals", winningOutcomeId:"m3a", outcomes:[
+    { id:"m3", name:"Total Goals", winningOutcomeId:null, outcomes:[
       { id:"m3a", label:"Over 2.5",  points:1.80 },
       { id:"m3b", label:"Under 2.5", points:2.05 } ] },
     { id:"m4", name:"Correct Score", winningOutcomeId:null, outcomes:[
@@ -520,18 +548,8 @@ const SEED = {
       { id:"m4c", label:"2-2 Draw",    points:12.0 },
       { id:"m4d", label:"1-2 Arsenal", points:13.0 } ] }
   ],
-  submissions: [
-    { participantId:"p1", selections:{ m1:{outcomeId:"m1a",stake:300}, m2:{outcomeId:"m2a",stake:200}, m3:{outcomeId:"m3a",stake:300}, m4:{outcomeId:"m4a",stake:100} } },
-    { participantId:"p3", selections:{ m1:{outcomeId:"m1c",stake:250}, m2:{outcomeId:"m2b",stake:250}, m3:{outcomeId:"m3a",stake:300}, m4:{outcomeId:"m4d",stake:200} } },
-    { participantId:"p4", selections:{ m1:{outcomeId:"m1b",stake:200}, m2:{outcomeId:"m2c",stake:200}, m3:{outcomeId:"m3b",stake:400}, m4:{outcomeId:"m4b",stake:200} } },
-    { participantId:"p5", selections:{ m1:{outcomeId:"m1a",stake:400}, m2:{outcomeId:"m2d",stake:200}, m3:{outcomeId:"m3a",stake:200} } }
-  ],
-  sgmBets: [
-    { id:"s1", participantId:"p1", url:"https://stake.com/sports/share/abc123", description:"4-leg City rout SGM",     stake:5,  odds:25.0, potentialReturn:125.0, status:"won" },
-    { id:"s2", participantId:"p3", url:"https://stake.com/sports/share/def456", description:"Saka anytime + cards",    stake:10, odds:8.40, potentialReturn:84.0,  status:"lost" },
-    { id:"s3", participantId:"p2", url:"https://stake.com/sports/share/ghi789", description:"Both teams to score storm", stake:5, odds:6.20, potentialReturn:31.0, status:"pending" },
-    { id:"s4", participantId:"p5", url:"https://stake.com/sports/share/jkl012", description:"Haaland 2+ goals longshot",  stake:2, odds:41.0, potentialReturn:82.0, status:"pending" }
-  ]
+  submissions: [],
+  sgmBets: []
 };
 </script>
 
@@ -605,7 +623,7 @@ const SEED = {
       <div class="section-head"><h2>Same Game Multis</h2><span class="hint">Newest first</span></div>
       <div class="card" style="margin-bottom:16px">
         <div class="collapse-head" id="sgmFormToggle">
-          <span class="ttl">＋ Submit a multi</span>
+          <span class="ttl">＋ Submit an SGM</span>
           <span class="eyebrow" id="sgmFormWho"></span>
         </div>
         <div class="collapse-body" id="sgmForm" hidden>
@@ -617,7 +635,7 @@ const SEED = {
           </div></div>
           <div class="field"><label>Potential return (points if it wins)</label><input id="sgmReturn" type="number" min="0" step="0.01" placeholder="125.00"/>
             <div class="calc-note" id="sgmCalcNote">Auto-fills to stake × odds — edit if your slip differs.</div></div>
-          <button class="btn primary block" id="sgmSubmit">Post multi to feed</button>
+          <button class="btn primary block" id="sgmSubmit">Post SGM to feed</button>
         </div>
       </div>
       <div id="sgmFeed"></div>
@@ -710,12 +728,13 @@ function findOutcome(market, oid){ return market && market.outcomes.find(o=>o.id
 function getSubmission(pid){ return state.submissions.find(s=>s.participantId===pid) || null; }
 
 function scoreParticipant(pid){
-  let tipPoints=0, winningTips=0, losingTips=0, tipStaked=0, bestSingleWin=0;
+  let tipPoints=0, winningTips=0, losingTips=0, tipStaked=0, bestSingleWin=0, tipsBacked=0;
   const sub = getSubmission(pid);
   if(sub){
     for(const m of state.markets){
       const pk = pickOf(sub.selections[m.id]);
       if(!pk || !pk.outcomeId || pk.stake<=0) continue;
+      tipsBacked++;
       tipStaked += pk.stake;
       if(!m.winningOutcomeId) continue;
       if(pk.outcomeId === m.winningOutcomeId){
@@ -734,7 +753,7 @@ function scoreParticipant(pid){
     tipPoints:round2(tipPoints), sgmPoints:round2(sgmPoints), total:round2(tipPoints+sgmPoints),
     winningTips, losingTips, sgmCount:mySgms.length, sgmWon,
     tipStaked:round2(tipStaked), bestSingleWin:round2(bestSingleWin), bestSgmWin:round2(bestSgmWin),
-    betsWon: winningTips+sgmWon, roi
+    betsWon: winningTips+sgmWon, tipsBacked, roi
   };
 }
 function computeStandings(){
@@ -861,7 +880,6 @@ function renderLeaderboard(){
           <span class="chip">SGM ${fmtPts(r.sgmPoints)}</span>
           <span class="chip win">${r.winningTips}W</span>
           <span class="chip loss">${r.losingTips}L</span>
-          <span class="chip">${r.sgmCount} multi${r.sgmCount===1?"":"s"}</span>
         </span>
       </span>
       <span class="lb-total"><span class="pts">${fmtPts(r.total)}</span><span class="lab">points</span></span>
@@ -924,12 +942,17 @@ function renderMarketForm(m){
   const hasPick = !!pk.outcomeId;
   const o = hasPick ? findOutcome(m, pk.outcomeId) : null;
   const toWin = (o && pk.stake>0) ? fmtPts(pk.stake*Number(o.points)) : "—";
+  const quick = [5,10,50,100].map(a=>`<button type="button" class="qbtn" data-addstake="${m.id}:${a}">$${a}</button>`).join("")
+    + `<button type="button" class="qbtn clr" data-clearstake="${m.id}">Clear</button>`;
   return `<div class="card market" data-market="${m.id}">
     <div class="market-head"><span class="mname">${esc(m.name)}</span><span class="market-state">${hasPick?'Set your stake':'Choose one'}</span></div>
     <div class="outcomes">${outs}</div>
     <div class="stake-row" ${hasPick?'':'hidden'}>
-      <div class="stake-input"><span>$</span><input type="number" inputmode="decimal" min="0" step="1" data-stake="${m.id}" value="${pk.stake>0?pk.stake:''}" placeholder="0"/></div>
-      <span class="to-win">to win <b data-towin="${m.id}">${toWin}</b></span>
+      <div class="stake-main">
+        <div class="stake-input"><span>$</span><input type="number" inputmode="decimal" min="0" step="1" data-stake="${m.id}" value="${pk.stake>0?pk.stake:''}" placeholder="0"/></div>
+        <span class="to-win">to win <b data-towin="${m.id}">${toWin}</b></span>
+      </div>
+      <div class="quick">${quick}</div>
     </div>
   </div>`;
 }
@@ -960,7 +983,7 @@ function renderSGM(){
   who.textContent = state.currentUserId ? "as "+findParticipant(state.currentUserId).name : "pick your name first";
   const feed = $("#sgmFeed");
   const bets = [...state.sgmBets].sort((a,b)=>(b.submittedAt||0)-(a.submittedAt||0));
-  if(!bets.length){ feed.innerHTML = emptyBox("No multis yet","Be the first to post a Same Game Multi."); return; }
+  if(!bets.length){ feed.innerHTML = emptyBox("No SGMs yet","Be the first to post an SGM."); return; }
   feed.innerHTML = bets.map(b=>{
     const p = findParticipant(b.participantId);
     const name = p ? p.name : "Unknown";
@@ -1024,7 +1047,7 @@ function openProfile(pid){
   const sgmHtml = mySgms.length ? mySgms.map(b=>{
     const cls = b.status, pv = b.status==="won"?`+${fmtPts(b.potentialReturn)}`:(b.status==="lost"?"0":fmtPts(b.potentialReturn));
     return `<div class="pick-row ${cls}"><div class="pk"><div class="mk">${money(b.stake)} @ ${fmtPts(b.odds)} · ${b.status}</div><div class="ch">${esc(b.description||"SGM")}</div></div><div class="pv">${pv}</div></div>`;
-  }).join("") : `<div class="empty"><strong>No multis</strong>${esc(p.name)} hasn't posted any SGMs.</div>`;
+  }).join("") : `<div class="empty"><strong>No SGMs yet</strong>${esc(p.name)} hasn't posted any SGMs.</div>`;
 
   const medal = rank<=3 ? ["🥇","🥈","🥉"][rank-1] : "";
   modal(`${medal} ${esc(p.name)}`, `Currently ranked #${rank} of ${state.participants.length}`, `
@@ -1257,8 +1280,8 @@ async function resetToSeed(){
     await sb.from("markets").insert(SEED.markets.map((m,i)=>({id:m.id,name:m.name,winning_outcome_id:m.winningOutcomeId,sort_order:i+1})));
     const outs=[]; SEED.markets.forEach(m=>m.outcomes.forEach(o=>outs.push({id:o.id,market_id:m.id,label:o.label,points:o.points})));
     await sb.from("outcomes").insert(outs);
-    await sb.from("submissions").insert(SEED.submissions.map(s=>({participant_id:s.participantId,selections:s.selections,locked:true})));
-    await sb.from("sgm_bets").insert(SEED.sgmBets.map(b=>({id:b.id,participant_id:b.participantId,url:b.url,description:b.description,stake:b.stake,odds:b.odds,potential_return:b.potentialReturn,status:b.status})));
+    if(SEED.submissions.length) await sb.from("submissions").insert(SEED.submissions.map(s=>({participant_id:s.participantId,selections:s.selections,locked:true})));
+    if(SEED.sgmBets.length) await sb.from("sgm_bets").insert(SEED.sgmBets.map(b=>({id:b.id,participant_id:b.participantId,url:b.url,description:b.description,stake:b.stake,odds:b.odds,potential_return:b.potentialReturn,status:b.status})));
     await commit("Reset to seed data");
     closeModal();
   }catch(e){ toast("Reset failed: "+(e.message||e),"err"); }
@@ -1394,7 +1417,7 @@ function wire(){
 
   $("#sgmFormToggle").addEventListener("click",()=>{
     const f=$("#sgmForm"); f.hidden=!f.hidden;
-    $("#sgmFormToggle").querySelector(".ttl").textContent=(f.hidden?"＋ Submit a multi":"− Hide form");
+    $("#sgmFormToggle").querySelector(".ttl").textContent=(f.hidden?"＋ Submit an SGM":"− Hide form");
   });
   const recalcReturn=()=>{ const s=parseFloat($("#sgmStake").value), o=parseFloat($("#sgmOdds").value);
     if(!isNaN(s)&&!isNaN(o)&&document.activeElement!==$("#sgmReturn")) $("#sgmReturn").value=round2(s*o); };
@@ -1417,6 +1440,23 @@ function wire(){
       const ms=mk && mk.querySelector(".market-state"); if(ms) ms.textContent="Set your stake";
       updateStakeUI(mid);
       return;
+    }
+    const qa=e.target.closest("[data-addstake]");
+    if(qa){
+      const [mid,amt]=qa.dataset.addstake.split(":");
+      const prev=pickOf(draftPicks[mid])||{};
+      const ns=round2((prev.stake||0)+Number(amt));
+      draftPicks[mid]={ outcomeId:prev.outcomeId, stake:ns };
+      const inp=document.querySelector('[data-stake="'+mid+'"]'); if(inp) inp.value=ns;
+      updateStakeUI(mid); return;
+    }
+    const qc=e.target.closest("[data-clearstake]");
+    if(qc){
+      const mid=qc.dataset.clearstake;
+      const prev=pickOf(draftPicks[mid])||{};
+      draftPicks[mid]={ outcomeId:prev.outcomeId, stake:0 };
+      const inp=document.querySelector('[data-stake="'+mid+'"]'); if(inp) inp.value='';
+      updateStakeUI(mid); return;
     }
     if(e.target.id==="submitTips"){ submitTips(); return; }
     const adm=e.target.closest("[data-adm]");
