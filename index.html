@@ -406,6 +406,9 @@ section[hidden]{display:none}
 .admtab.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F}
 .adm-out input.ptsedit{width:74px;flex:none;background:var(--ink-2);border:1px solid var(--line);color:var(--emerald);font-family:var(--mono);font-weight:700;border-radius:8px;padding:5px 7px;text-align:right}
 .adm-out input.ptsedit:focus{outline:none;border-color:var(--emerald)}
+.inline-add input,.inline-add select{background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 11px;font-size:14px}
+.inline-add input:focus,.inline-add select:focus{outline:none;border-color:var(--emerald)}
+.tpl-sel{flex:1;min-width:0}
 
 /* toast */
 #toast{
@@ -833,9 +836,22 @@ function renderHeader(){
     state.participants.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
   sel.value = state.currentUserId || "";
 }
+function teamNames(){
+  const p = String(state.competition.eventName||"").split(/\s+v(?:s)?\.?\s+/i);
+  if(p.length>=2 && p[0].trim() && p[1].trim()) return [p[0].trim(), p[1].trim()];
+  return ["Team 1","Team 2"];
+}
+function templateOutcomes(tpl){
+  const t=teamNames();
+  if(tpl==="1x2") return [t[0],"Draw",t[1]];
+  if(tpl==="h2h") return [t[0],t[1]];
+  if(tpl==="ou")  return ["Over","Under"];
+  if(tpl==="yn")  return ["Yes","No"];
+  return [];
+}
 function formatEventName(name){
-  const m = String(name).split(/\s+vs\.?\s+/i);
-  if(m.length===2) return `${esc(m[0])}<span class="vs">vs</span>${esc(m[1])}`;
+  const m = String(name).split(/\s+v(?:s)?\.?\s+/i);
+  if(m.length===2) return `${esc(m[0].trim())}<span class="vs">vs</span>${esc(m[1].trim())}`;
   return esc(name);
 }
 
@@ -1091,6 +1107,12 @@ function openAdminLogin(){
 let adminTab = "competition";
 function renderAdminPanel(){
   const c = state.competition;
+  const _tn = teamNames();
+  const tplSel = `<select data-add="newMarketTpl" class="tpl-sel">`+
+    [["1x2","Match result — "+_tn[0]+" / Draw / "+_tn[1]],
+     ["h2h","Head-to-head — "+_tn[0]+" / "+_tn[1]],
+     ["ou","Over / Under"],["yn","Yes / No"],["custom","Custom (no outcomes)"]]
+    .map(o=>`<option value="${o[0]}">${esc(o[1])}</option>`).join("")+`</select>`;
   const statuses = ["Open","Tips Locked","In Progress","Completed"];
   const statusBtns = statuses.map(s=>`<button class="btn sm ${s===c.status?'primary':''}" data-adm="status" data-val="${s}">${s}</button>`).join("");
 
@@ -1139,7 +1161,11 @@ function renderAdminPanel(){
     </div>`,
     markets: `<div class="admin-card">
       ${marketsHtml}
-      <div class="inline-add"><input placeholder="New market name (e.g. Total Goals)" data-add="newMarket"/><button class="btn sm" data-adm="addMarket">Add market</button></div>
+      <div class="inline-add" style="flex-wrap:wrap">
+        <input placeholder="New market name (e.g. Total Goals)" data-add="newMarket" style="flex:1 1 100%"/>
+        ${tplSel}
+        <button class="btn sm" data-adm="addMarket">Add</button>
+      </div>
     </div>`,
     sgms: `<div class="admin-card">${sgmAdmin}</div>`,
     tools: `<div class="admin-card">
@@ -1185,8 +1211,17 @@ async function handleAdminAction(action, val){
     case "addMarket":{
       const name=(($('[data-add="newMarket"]')||{}).value||"").trim();
       if(!name) return toast("Enter a market name","err");
+      const tpl=(($('[data-add="newMarketTpl"]')||{}).value)||"custom";
       const nextOrder=(state.markets.reduce((mx,m)=>Math.max(mx,m.sortOrder||0),0))+1;
-      return void adminWrite(sb.from("markets").insert({id:uid("m"),name,winning_outcome_id:null,sort_order:nextOrder}), "Market added");
+      const mid=uid("m");
+      const r1=await sb.from("markets").insert({id:mid,name,winning_outcome_id:null,sort_order:nextOrder});
+      if(r1.error) return toast("Couldn't add market: "+r1.error.message,"err");
+      const labels=templateOutcomes(tpl);
+      if(labels.length){
+        const r2=await sb.from("outcomes").insert(labels.map(l=>({id:uid("o"),market_id:mid,label:l,points:0})));
+        if(r2.error) toast("Market added, but outcomes failed: "+r2.error.message,"err");
+      }
+      await commit("Market added — now set the prices"); if($(".sheet")) renderAdminPanel(); return;
     }
     case "rmMarket":
       return void adminWrite(sb.from("markets").delete().eq("id",val), "Market deleted");
