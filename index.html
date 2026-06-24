@@ -441,9 +441,11 @@ section[hidden]{display:none}
 .stake-input input:focus{outline:none}
 .to-win{font-size:13px;color:var(--text-2)}
 .to-win b{font-family:var(--mono);color:var(--emerald)}
-.awards{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px;scrollbar-width:none}
-.awards::-webkit-scrollbar{display:none}
-.award-card{flex:none;width:148px;background:linear-gradient(180deg,var(--surface),var(--ink-2));border:1px solid var(--line);border-radius:13px;padding:12px 13px}
+.awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px}
+.award-card{background:linear-gradient(180deg,var(--surface),var(--ink-2));border:1px solid var(--line);border-radius:13px;padding:12px 13px;cursor:pointer;transition:.16s}
+.award-card:hover{border-color:var(--emerald-dim);transform:translateY(-1px)}
+.mkt-search{width:100%;background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.mkt-search:focus{outline:none;border-color:var(--emerald)}
 .aw-ic{font-size:18px;line-height:1}
 .aw-lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:7px}
 .aw-name{font-weight:800;font-size:14px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -790,7 +792,7 @@ function renderAwards(){
     {ic:"📈", lab:"Best ROI",       d:a.roi,           fmt:v=>`<span class="${v<0?'roineg':''}">${fmtRoi(v)}</span>`}
   ].filter(c=>c.d);
   if(!cards.length){ host.innerHTML=""; return; }
-  host.innerHTML = `<div class="awards">`+cards.map(c=>`<div class="award-card"><div class="aw-ic">${c.ic}</div><div class="aw-lab">${c.lab}</div><div class="aw-name">${esc(c.d.name)}</div><div class="aw-val mono">${c.fmt(c.d.value)}</div></div>`).join("")+`</div>`;
+  host.innerHTML = `<div class="awards">`+cards.map(c=>`<div class="award-card" data-profile="${c.d.id}"><div class="aw-ic">${c.ic}</div><div class="aw-lab">${c.lab}</div><div class="aw-name">${esc(c.d.name)}</div><div class="aw-val mono">${c.fmt(c.d.value)}</div></div>`).join("")+`</div>`;
 }
 function round2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
 function fmtPts(n){ const v=round2(n); return Number.isInteger(v)?String(v):v.toFixed(2).replace(/\.?0+$/,""); }
@@ -1103,6 +1105,12 @@ function openAdminLogin(){
   }
 }
 
+let mktQuery="";
+function applyMarketFilter(){
+  const q=mktQuery.trim().toLowerCase();
+  document.querySelectorAll(".adm-market").forEach(c=>{ c.style.display = (!q || (c.dataset.mname||"").indexOf(q)>=0) ? "" : "none"; });
+}
+function filterMarkets(v){ mktQuery=v; applyMarketFilter(); }
 let adminTab = "competition";
 function renderAdminPanel(){
   const c = state.competition;
@@ -1127,7 +1135,8 @@ function renderAdminPanel(){
         ${isWin?'<span class="winmark">WON</span>':`<button class="btn sm" data-adm="setWin" data-val="${m.id}:${o.id}">Win</button>`}
         <button class="btn sm danger" data-adm="rmOut" data-val="${m.id}:${o.id}">✕</button></div>`;
     }).join("");
-    return `<div class="adm-market">
+    const _search=(m.name+" "+m.outcomes.map(o=>o.label).join(" ")).toLowerCase();
+    return `<div class="adm-market" data-mname="${esc(_search)}">
       <div class="list-item" style="padding-top:0"><strong>${esc(m.name)} ${m.winningOutcomeId?'<span class="winmark">settled</span>':''}</strong>
         <span>${m.winningOutcomeId?`<button class="btn sm" data-adm="clearWin" data-val="${m.id}">Unsettle</button>`:''}
         <button class="btn sm danger" data-adm="rmMarket" data-val="${m.id}">Delete</button></span></div>
@@ -1165,7 +1174,8 @@ function renderAdminPanel(){
         ${tplSel}
         <button class="btn sm primary" data-adm="addMarket">Add</button>
       </div>
-      <div style="height:1px;background:var(--line-soft);margin:16px 0 4px"></div>
+      <div style="height:1px;background:var(--line-soft);margin:16px 0 12px"></div>
+      <input id="mktSearch" class="mkt-search" placeholder="Search markets to settle…" autocomplete="off" value="${esc(mktQuery)}"/>
       ${marketsHtml}
     </div>`,
     sgms: `<div class="admin-card">${sgmAdmin}</div>`,
@@ -1185,6 +1195,7 @@ function renderAdminPanel(){
   if(!sections[adminTab]) adminTab="competition";
   const tabBar=`<div class="admtabs">`+tabs.map(([k,l])=>`<button class="admtab ${k===adminTab?'active':''}" data-admtab="${k}">${esc(l)}</button>`).join("")+`</div>`;
   modal("Admin panel", state.competition.name, tabBar+sections[adminTab], {wide:true});
+  if(adminTab==="markets") applyMarketFilter();
 }
 
 /* one async helper so each admin action is: write -> resync -> repaint panel */
@@ -1518,6 +1529,7 @@ function wire(){
   },true);
 
   document.addEventListener("input",e=>{
+    if(e.target.id==="mktSearch"){ filterMarkets(e.target.value); return; }
     const st=e.target.closest && e.target.closest("[data-stake]");
     if(!st) return;
     const mid=st.dataset.stake; let v=parseFloat(st.value); if(isNaN(v)||v<0) v=0;
