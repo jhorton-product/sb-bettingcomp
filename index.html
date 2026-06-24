@@ -295,13 +295,10 @@ section[hidden]{display:none}
   border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;
   overflow:hidden;
 }
-.slip::before{ /* perforated accent edge */
-  content:"";position:absolute;left:0;right:0;top:46px;height:0;
-  border-top:2px dashed var(--line);
-}
-.slip-notch{position:absolute;top:38px;width:16px;height:16px;border-radius:50%;background:var(--ink);border:1px solid var(--line)}
-.slip-notch.l{left:-8px}.slip-notch.r{right:-8px}
-.slip-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}
+.slip-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:16px;margin-bottom:16px;border-bottom:2px dashed var(--line)}
+.slip-head::before,.slip-head::after{content:"";position:absolute;bottom:-8px;width:16px;height:16px;border-radius:50%;background:var(--ink);border:1px solid var(--line)}
+.slip-head::before{left:-24px}
+.slip-head::after{right:-24px}
 .slip-user{display:flex;align-items:center;gap:9px;min-width:0}
 .avatar{
   width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;
@@ -1008,7 +1005,6 @@ function renderSGM(){
     const name = p ? p.name : "Unknown";
     const award = b.status==="won" ? `<span class="award">+${fmtPts(b.potentialReturn)} pts banked</span>` : "";
     return `<div class="slip">
-      <span class="slip-notch l"></span><span class="slip-notch r"></span>
       <div class="slip-head">
         <div class="slip-user">
           <div class="avatar">${esc(initials(name))}</div>
@@ -1123,7 +1119,7 @@ function renderAdminPanel(){
     <div class="list-item"><span>${esc(p.name)}</span><button class="btn sm danger" data-adm="rmUser" data-val="${p.id}">Remove</button></div>`).join("")
     || `<div class="calc-note">No participants.</div>`;
 
-  const marketsHtml = state.markets.map(m=>{
+  const marketsHtml = [...state.markets].reverse().map(m=>{
     const outs = m.outcomes.map(o=>{
       const isWin = m.winningOutcomeId===o.id;
       return `<div class="adm-out"><input class="labedit" type="text" data-editlabel="${o.id}" value="${esc(o.label)}" title="Outcome name"/>
@@ -1163,12 +1159,14 @@ function renderAdminPanel(){
       <div class="inline-add"><input placeholder="New player name" data-add="newUser"/><button class="btn sm" data-adm="addUser">Add</button></div>
     </div>`,
     markets: `<div class="admin-card">
-      ${marketsHtml}
       <div class="inline-add" style="flex-wrap:wrap">
-        <input placeholder="New market name (e.g. Total Goals)" data-add="newMarket" style="flex:1 1 100%"/>
+        <div class="eyebrow" style="flex:1 1 100%">Add a market</div>
+        <input placeholder="Market name (e.g. Total Goals)" data-add="newMarket" style="flex:1 1 100%"/>
         ${tplSel}
-        <button class="btn sm" data-adm="addMarket">Add</button>
+        <button class="btn sm primary" data-adm="addMarket">Add</button>
       </div>
+      <div style="height:1px;background:var(--line-soft);margin:16px 0 4px"></div>
+      ${marketsHtml}
     </div>`,
     sgms: `<div class="admin-card">${sgmAdmin}</div>`,
     tools: `<div class="admin-card">
@@ -1368,7 +1366,7 @@ async function submitSGM(){
   const { error } = await sb.from("sgm_bets").insert({ id:uid("s"), participant_id:pid, url, description:desc, stake:round2(stake), odds:round2(odds), potential_return:round2(ret), status:"pending" });
   if(error){ toast("Couldn't post: "+error.message,"err"); return; }
   ["#sgmUrl","#sgmDesc","#sgmStake","#sgmOdds","#sgmReturn"].forEach(s=>$(s).value="");
-  await commit("Multi posted to feed");
+  await commit("SGM posted to feed");
   switchTab("sgm");
 }
 
