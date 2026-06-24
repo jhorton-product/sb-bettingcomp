@@ -406,6 +406,8 @@ section[hidden]{display:none}
 .admtab.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F}
 .adm-out input.ptsedit{width:74px;flex:none;background:var(--ink-2);border:1px solid var(--line);color:var(--emerald);font-family:var(--mono);font-weight:700;border-radius:8px;padding:5px 7px;text-align:right}
 .adm-out input.ptsedit:focus{outline:none;border-color:var(--emerald)}
+.adm-out input.labedit{flex:1;min-width:0;background:var(--ink-2);border:1px solid var(--line);color:var(--text);font-weight:700;border-radius:8px;padding:5px 9px;font-size:13px}
+.adm-out input.labedit:focus{outline:none;border-color:var(--emerald)}
 .inline-add input,.inline-add select{background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 11px;font-size:14px}
 .inline-add input:focus,.inline-add select:focus{outline:none;border-color:var(--emerald)}
 .tpl-sel{flex:1;min-width:0}
@@ -1123,7 +1125,7 @@ function renderAdminPanel(){
   const marketsHtml = state.markets.map(m=>{
     const outs = m.outcomes.map(o=>{
       const isWin = m.winningOutcomeId===o.id;
-      return `<div class="adm-out"><span class="lab">${esc(o.label)}</span>
+      return `<div class="adm-out"><input class="labedit" type="text" data-editlabel="${o.id}" value="${esc(o.label)}" title="Outcome name"/>
         <input class="ptsedit" type="number" step="0.01" min="0" data-editout="${o.id}" value="${o.points}" title="Price (decimal odds)"/>
         ${isWin?'<span class="winmark">WON</span>':`<button class="btn sm" data-adm="setWin" data-val="${m.id}:${o.id}">Win</button>`}
         <button class="btn sm danger" data-adm="rmOut" data-val="${m.id}:${o.id}">✕</button></div>`;
@@ -1291,6 +1293,14 @@ function toLocalInput(iso){
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 function fromLocalInput(v){ const d=new Date(v); return isNaN(d)?v:d.toISOString(); }
+
+async function updateOutcomeLabel(oid, value){
+  const label=(value||"").trim();
+  if(!label) return toast("Outcome name can't be empty","err");
+  const { error } = await sb.from("outcomes").update({label}).eq("id",oid);
+  if(error) return toast("Couldn't rename: "+error.message,"err");
+  await commit("Outcome renamed");
+}
 
 async function updateOutcomePrice(oid, value){
   const pts=parseFloat(value);
@@ -1502,6 +1512,8 @@ function wire(){
   document.addEventListener("blur",e=>{
     const ed=e.target.closest && e.target.closest("[data-edit]");
     if(ed){ handleAdminEdit(ed.dataset.edit, ed.value); return; }
+    const el=e.target.closest && e.target.closest("[data-editlabel]");
+    if(el){ updateOutcomeLabel(el.dataset.editlabel, el.value); return; }
     const eo=e.target.closest && e.target.closest("[data-editout]");
     if(eo) updateOutcomePrice(eo.dataset.editout, eo.value);
   },true);
