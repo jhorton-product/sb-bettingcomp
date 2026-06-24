@@ -451,6 +451,7 @@ section[hidden]{display:none}
 .aw-lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:7px}
 .aw-name{font-weight:800;font-size:14px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .aw-val{font-size:13px;color:var(--emerald);font-weight:700;margin-top:2px}
+.roineg{color:var(--red)}
 
 @media (max-width:520px){
   .slip-grid{grid-template-columns:repeat(3,1fr)}
@@ -789,7 +790,7 @@ function renderAwards(){
     {ic:"🚀", lab:"Highest single", d:a.highestSingle, fmt:v=>fmtPts(v)+" pts"},
     {ic:"🎯", lab:"Most bets won",  d:a.mostWon,       fmt:v=>v+" won"},
     {ic:"💥", lab:"Top SGM win",    d:a.highestSgm,    fmt:v=>fmtPts(v)+" pts"},
-    {ic:"📈", lab:"Best ROI",       d:a.roi,           fmt:v=>fmtRoi(v)}
+    {ic:"📈", lab:"Best ROI",       d:a.roi,           fmt:v=>`<span class="${v<0?'roineg':''}">${fmtRoi(v)}</span>`}
   ].filter(c=>c.d);
   if(!cards.length){ host.innerHTML=""; return; }
   host.innerHTML = `<div class="awards">`+cards.map(c=>`<div class="award-card"><div class="aw-ic">${c.ic}</div><div class="aw-lab">${c.lab}</div><div class="aw-name">${esc(c.d.name)}</div><div class="aw-val mono">${c.fmt(c.d.value)}</div></div>`).join("")+`</div>`;
@@ -1075,7 +1076,7 @@ function openProfile(pid){
       <div class="c"><div class="v">${fmtPts(sc.sgmPoints)}</div><div class="l">SGM pts</div></div>
       <div class="c"><div class="v">#${rank}</div><div class="l">Rank</div></div>
     </div>
-    <div class="detail-h">Tips · ${sc.winningTips}W ${sc.losingTips}L · $${fmtPts(sc.tipStaked)} staked · ROI ${fmtRoi(sc.roi)}</div>
+    <div class="detail-h">Tips · ${sc.winningTips}W ${sc.losingTips}L · $${fmtPts(sc.tipStaked)} staked · ROI <span class="${sc.roi!=null&&sc.roi<0?'roineg':''}">${fmtRoi(sc.roi)}</span></div>
     ${tipsHtml}
     <div class="detail-h">Same Game Multis · ${sc.sgmCount}</div>
     ${sgmHtml}
