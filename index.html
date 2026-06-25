@@ -452,6 +452,13 @@ section[hidden]{display:none}
 .tipcats{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:14px}
 .tipcats button{flex:1;border:none;background:transparent;color:var(--text-2);font-weight:700;font-size:13px;padding:9px 6px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .tipcats button.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F}
+.idprompt{max-width:380px;margin:26px auto;text-align:center;background:linear-gradient(180deg,var(--surface),var(--ink-2));border:1px solid var(--line);border-radius:16px;padding:30px 22px;box-shadow:var(--shadow)}
+.idp-emoji{font-size:34px;line-height:1}
+.idprompt h3{margin:10px 0 6px;font-size:20px;font-weight:800;letter-spacing:-.02em}
+.idprompt>p{color:var(--text-2);font-size:13.5px;margin:0 auto 16px;max-width:300px}
+.idprompt select{width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:11px;padding:12px 13px;margin-bottom:12px;font-size:15px}
+.idprompt select:focus{outline:none;border-color:var(--emerald)}
+.idp-note{font-size:12px;color:var(--muted);margin:14px 0 0 !important}
 .aw-ic{font-size:18px;line-height:1}
 .aw-lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:7px}
 .aw-name{font-weight:800;font-size:14px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -928,11 +935,22 @@ function updateStakeUI(changedMid){
   const bar=document.getElementById("bankrollBar"); if(bar) bar.innerHTML=bankrollInner(remain);
   const btn=document.getElementById("submitTips"); if(btn) btn.disabled=remain<0;
 }
+function identityPrompt(){
+  const opts = state.participants.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  return `<div class="idprompt">
+    <div class="idp-emoji">👋</div>
+    <h3>Who are you?</h3>
+    <p>Pick your name so we know whose slip this is — you'll only do this once on this device.</p>
+    <select id="idpSelect"><option value="">Select your name…</option>${opts}</select>
+    <button class="btn primary block" id="idpConfirm">That's me</button>
+    <p class="idp-note">You can change it any time from the selector at the top right.</p>
+  </div>`;
+}
 function renderTips(){
   const body = $("#tipsBody");
   const hint = $("#tipsHint");
   const pid = state.currentUserId;
-  if(!pid){ hint.textContent=""; body.innerHTML = emptyBox("Pick your name first","Use the selector at the top right so we know whose slip this is."); return; }
+  if(!pid){ hint.textContent=""; body.innerHTML = identityPrompt(); return; }
   const me = findParticipant(pid);
   const sub = getSubmission(pid);
   const compOpen = state.competition.status === "Open";
@@ -1569,6 +1587,13 @@ function wire(){
       draftPicks[mid]={ outcomeId:prev.outcomeId, stake:0 };
       const inp=document.querySelector('[data-stake="'+mid+'"]'); if(inp) inp.value='';
       updateStakeUI(mid); return;
+    }
+    if(e.target.id==="idpConfirm"){
+      const sel=document.getElementById("idpSelect"); const id=sel?sel.value:"";
+      if(!id) return toast("Pick your name","err");
+      state.currentUserId=id; setLocalUser(id); draftPicks={}; renderAll();
+      toast("Welcome, "+findParticipant(id).name);
+      return;
     }
     if(e.target.id==="submitTips"){ submitTips(); return; }
     const adm=e.target.closest("[data-adm]");
