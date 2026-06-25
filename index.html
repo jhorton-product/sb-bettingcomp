@@ -1196,6 +1196,13 @@ function renderAdminPanel(){
     </div>`,
     sgms: `<div class="admin-card">${sgmAdmin}</div>`,
     tools: `<div class="admin-card">
+      <div class="eyebrow" style="margin-bottom:8px">Reuse this card next fixture — swap a team name</div>
+      <div class="inline-add" style="flex-wrap:wrap">
+        <input id="swapFind" placeholder="Find (e.g. Scotland)" style="flex:1 1 100%"/>
+        <input id="swapRepl" placeholder="Replace with (e.g. England)" style="flex:1 1 100%"/>
+        <button class="btn sm" data-adm="swapText">Replace across all markets</button>
+      </div>
+      <p class="calc-note" style="margin:8px 0 16px">Renames every outcome containing that text — handles "Scotland" and "2-1 Scotland" alike. Repeat for the second team, then update the event name in the Comp tab. (Odds change per match, so you'll still set prices.)</p>
       <div class="btn-grid">
         <button class="btn sm" data-adm="recalc">↻ Refresh scores</button>
         <button class="btn sm" data-adm="snapshot">📸 Capture rank snapshot</button>
@@ -1289,6 +1296,8 @@ async function handleAdminAction(action, val){
       return void adminWrite(sb.from("submissions").delete().eq("participant_id",val), "Slip unlocked");
     case "logout":
       await sb.auth.signOut(); session.isAdmin=false; closeModal(); toast("Signed out of admin"); return;
+    case "swapText":
+      return swapOutcomeText();
     case "reset":
       return resetToSeed();
   }
@@ -1319,6 +1328,22 @@ function toLocalInput(iso){
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 function fromLocalInput(v){ const d=new Date(v); return isNaN(d)?v:d.toISOString(); }
+
+async function swapOutcomeText(){
+  const f=((document.getElementById("swapFind")||{}).value||"").trim();
+  const r=((document.getElementById("swapRepl")||{}).value||"");
+  if(!f) return toast("Enter the text to find","err");
+  const updates=[];
+  for(const m of state.markets){ for(const o of m.outcomes){
+    if(o.label.indexOf(f)>=0){ const nl=o.label.split(f).join(r); if(nl!==o.label) updates.push({id:o.id,label:nl}); }
+  }}
+  if(!updates.length) return toast('No outcomes contain "'+f+'"',"err");
+  if(!confirm('Replace "'+f+'" with "'+r+'" in '+updates.length+' outcome'+(updates.length===1?'':'s')+'?')) return;
+  const res=await Promise.all(updates.map(u=>sb.from("outcomes").update({label:u.label}).eq("id",u.id)));
+  if(res.some(x=>x.error)) return toast("Some updates failed","err");
+  await commit("Renamed "+updates.length+" outcome"+(updates.length===1?'':'s'));
+  if($(".sheet")) renderAdminPanel();
+}
 
 async function updateOutcomeLabel(oid, value){
   const label=(value||"").trim();
