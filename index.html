@@ -249,7 +249,7 @@ section[hidden]{display:none}
 .market-head .mname{font-weight:800;font-size:15px;letter-spacing:-.01em}
 .market-state{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .market-state.settled{color:var(--emerald)}
-.outcomes{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.outcomes{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:8px}
 .outcome{
   display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:11px 13px;border-radius:11px;text-align:left;
@@ -257,7 +257,7 @@ section[hidden]{display:none}
   transition:.14s;font-weight:600;width:100%;
 }
 .outcome:hover:not(:disabled){border-color:var(--emerald-dim)}
-.outcome .ol{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.outcome .ol{font-size:13.5px;line-height:1.25;min-width:0;white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .outcome .odds{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--emerald);flex:none}
 .outcome.sel{background:var(--emerald-ghost);border-color:var(--emerald);box-shadow:0 0 0 1px var(--emerald) inset}
 .outcome.sel .ol{color:#fff;font-weight:800}
