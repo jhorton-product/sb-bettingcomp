@@ -446,6 +446,9 @@ section[hidden]{display:none}
 .award-card:hover{border-color:var(--emerald-dim);transform:translateY(-1px)}
 .mkt-search{width:100%;background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:14px}
 .mkt-search:focus{outline:none;border-color:var(--emerald)}
+.mktfilter{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:12px}
+.mktfilter button{flex:1;border:none;background:transparent;color:var(--text-2);font-weight:700;font-size:12px;padding:7px 6px;border-radius:8px;white-space:nowrap;cursor:pointer}
+.mktfilter button.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F}
 .aw-ic{font-size:18px;line-height:1}
 .aw-lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:7px}
 .aw-name{font-weight:800;font-size:14px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1106,9 +1109,15 @@ function openAdminLogin(){
 }
 
 let mktQuery="";
+let mktFilter="all";
 function applyMarketFilter(){
   const q=mktQuery.trim().toLowerCase();
-  document.querySelectorAll(".adm-market").forEach(c=>{ c.style.display = (!q || (c.dataset.mname||"").indexOf(q)>=0) ? "" : "none"; });
+  document.querySelectorAll(".adm-market").forEach(c=>{
+    const okQ = !q || (c.dataset.mname||"").indexOf(q)>=0;
+    const settled = c.dataset.settled==="1";
+    const okF = mktFilter==="all" || (mktFilter==="settled"?settled:!settled);
+    c.style.display = (okQ && okF) ? "" : "none";
+  });
 }
 function filterMarkets(v){ mktQuery=v; applyMarketFilter(); }
 let adminTab = "competition";
@@ -1136,7 +1145,7 @@ function renderAdminPanel(){
         <button class="btn sm danger" data-adm="rmOut" data-val="${m.id}:${o.id}">✕</button></div>`;
     }).join("");
     const _search=(m.name+" "+m.outcomes.map(o=>o.label).join(" ")).toLowerCase();
-    return `<div class="adm-market" data-mname="${esc(_search)}">
+    return `<div class="adm-market" data-mname="${esc(_search)}" data-settled="${m.winningOutcomeId?'1':'0'}">
       <div class="list-item" style="padding-top:0"><strong>${esc(m.name)} ${m.winningOutcomeId?'<span class="winmark">settled</span>':''}</strong>
         <span>${m.winningOutcomeId?`<button class="btn sm" data-adm="clearWin" data-val="${m.id}">Unsettle</button>`:''}
         <button class="btn sm danger" data-adm="rmMarket" data-val="${m.id}">Delete</button></span></div>
@@ -1154,6 +1163,8 @@ function renderAdminPanel(){
         <button class="btn sm" data-adm="sgmStatus" data-val="${b.id}:pending">P</button></span></div>`;
   }).join("") : `<div class="calc-note">No SGMs submitted.</div>`;
 
+  const nSettled=state.markets.filter(m=>m.winningOutcomeId).length;
+  const nUnsettled=state.markets.length-nSettled;
   const sections = {
     competition: `<div class="admin-card">
       <div class="field"><label>Competition name</label><input data-edit="comp.name" value="${esc(c.name)}"/></div>
@@ -1176,6 +1187,11 @@ function renderAdminPanel(){
       </div>
       <div style="height:1px;background:var(--line-soft);margin:16px 0 12px"></div>
       <input id="mktSearch" class="mkt-search" placeholder="Search markets to settle…" autocomplete="off" value="${esc(mktQuery)}"/>
+      <div class="mktfilter">
+        <button data-mktfilter="all" class="${mktFilter==='all'?'active':''}">All ${state.markets.length}</button>
+        <button data-mktfilter="unsettled" class="${mktFilter==='unsettled'?'active':''}">To settle ${nUnsettled}</button>
+        <button data-mktfilter="settled" class="${mktFilter==='settled'?'active':''}">Settled ${nSettled}</button>
+      </div>
       ${marketsHtml}
     </div>`,
     sgms: `<div class="admin-card">${sgmAdmin}</div>`,
@@ -1482,6 +1498,7 @@ function wire(){
 
   document.addEventListener("click",e=>{
     const at=e.target.closest("[data-admtab]"); if(at){ adminTab=at.dataset.admtab; renderAdminPanel(); return; }
+    const mf=e.target.closest("[data-mktfilter]"); if(mf){ mktFilter=mf.dataset.mktfilter; mf.parentElement.querySelectorAll("[data-mktfilter]").forEach(b=>b.classList.toggle("active", b.dataset.mktfilter===mktFilter)); applyMarketFilter(); return; }
     const prof=e.target.closest("[data-profile]"); if(prof){ openProfile(prof.dataset.profile); return; }
     const pick=e.target.closest("[data-pick]");
     if(pick){
