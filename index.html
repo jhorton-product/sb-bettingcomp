@@ -791,11 +791,13 @@ function computeAwards(){
     highestSingle: leader(r=>r.bestSingleWin>0?r.bestSingleWin:null),
     mostWon:       leader(r=>r.betsWon>0?r.betsWon:null),
     highestSgm:    leader(r=>r.bestSgmWin>0?r.bestSgmWin:null),
-    roi:           leader(r=>r.roi)
+    roi:           leader(r=> (r.roi!=null && r.roi>-1) ? r.roi : null)
   };
 }
 function renderAwards(){
   const host=document.getElementById("awardsStrip"); if(!host) return;
+  const st=state.competition.status;
+  if(st!=="In Progress" && st!=="Completed"){ host.innerHTML=""; return; }
   const a=computeAwards();
   const cards=[
     {ic:"🏆", lab:"Overall points", d:a.overall,       fmt:v=>fmtPts(v)+" pts"},
