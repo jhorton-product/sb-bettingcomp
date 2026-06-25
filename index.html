@@ -449,6 +449,9 @@ section[hidden]{display:none}
 .mktfilter{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:12px}
 .mktfilter button{flex:1;border:none;background:transparent;color:var(--text-2);font-weight:700;font-size:12px;padding:7px 6px;border-radius:8px;white-space:nowrap;cursor:pointer}
 .mktfilter button.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F}
+.tipcats{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:14px}
+.tipcats button{flex:1;border:none;background:transparent;color:var(--text-2);font-weight:700;font-size:13px;padding:9px 6px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.tipcats button.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F}
 .aw-ic{font-size:18px;line-height:1}
 .aw-lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:7px}
 .aw-name{font-weight:800;font-size:14px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -813,7 +816,8 @@ function relTime(ts){
 }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
-let draftPicks = {};   // {marketId: outcomeId} while filling the tip form
+let draftPicks = {};
+let tipsCat = "all";   // {marketId: outcomeId} while filling the tip form
 
 /* =========================================================================
    RENDER
@@ -948,12 +952,22 @@ function renderTips(){
   const remain = STARTING_BANKROLL - draftStaked();
   let html = `<div class="notice"><span class="ic">✏️</span><div>You've got <b>$${STARTING_BANKROLL}</b> to spread across your tips. Back an outcome, set a stake — a winner pays <b>stake × price</b> in points. <b>One submission only.</b></div></div>`;
   html += `<div class="bankroll" id="bankrollBar">${bankrollInner(remain)}</div>`;
-  html += state.markets.map(m=>renderMarketForm(m)).join("");
+  const _cats=[["all","All"],["goals","Goals"],["corners","Corners"],["cards","Cards"]];
+  html += `<div class="tipcats">`+_cats.map(c=>`<button data-tipscat="${c[0]}" class="${tipsCat===c[0]?'active':''}">${c[1]}</button>`).join("")+`</div>`;
+  const _shown=state.markets.filter(m=> tipsCat==="all" ? true : marketCat(m)===tipsCat);
+  html += _shown.length ? _shown.map(m=>renderMarketForm(m)).join("") : `<div class="empty"><strong>No markets here</strong>Nothing in this group — check the other tabs.</div>`;
   html += `<button class="btn primary block" id="submitTips" style="margin-top:4px"${remain<0?' disabled':''}>Lock in my tips</button>`;
   body.innerHTML = html;
 }
 function anySettled(){ return state.markets.some(m=>m.winningOutcomeId); }
 
+function marketCat(m){
+  const n=(m.name||"").toLowerCase();
+  if(n.indexOf("goal")>=0) return "goals";
+  if(n.indexOf("corner")>=0) return "corners";
+  if(n.indexOf("card")>=0 || n.indexOf("booking")>=0) return "cards";
+  return "other";
+}
 function renderMarketForm(m){
   const pk = pickOf(draftPicks[m.id]) || {};
   const outs = m.outcomes.map(o=>{
@@ -1524,6 +1538,7 @@ function wire(){
   document.addEventListener("click",e=>{
     const at=e.target.closest("[data-admtab]"); if(at){ adminTab=at.dataset.admtab; renderAdminPanel(); return; }
     const mf=e.target.closest("[data-mktfilter]"); if(mf){ mktFilter=mf.dataset.mktfilter; mf.parentElement.querySelectorAll("[data-mktfilter]").forEach(b=>b.classList.toggle("active", b.dataset.mktfilter===mktFilter)); applyMarketFilter(); return; }
+    const tc=e.target.closest("[data-tipscat]"); if(tc){ tipsCat=tc.dataset.tipscat; renderTips(); return; }
     const prof=e.target.closest("[data-profile]"); if(prof){ openProfile(prof.dataset.profile); return; }
     const pick=e.target.closest("[data-pick]");
     if(pick){
