@@ -548,19 +548,19 @@ const SEED = {
     { id:"p30", name:"JD" }
   ],
   markets: [
-    { id:"m1", name:"Match Winner", winningOutcomeId:null, outcomes:[
+    { id:"m1", name:"Match Winner", winningOutcomeIds:null, outcomes:[
       { id:"m1a", label:"Man City", points:1.90 },
       { id:"m1b", label:"Draw",     points:3.60 },
       { id:"m1c", label:"Arsenal",  points:4.20 } ] },
-    { id:"m2", name:"First Goalscorer", winningOutcomeId:null, outcomes:[
+    { id:"m2", name:"First Goalscorer", winningOutcomeIds:null, outcomes:[
       { id:"m2a", label:"E. Haaland", points:3.25 },
       { id:"m2b", label:"B. Saka",    points:5.50 },
       { id:"m2c", label:"P. Foden",   points:6.00 },
       { id:"m2d", label:"K. Havertz", points:7.50 } ] },
-    { id:"m3", name:"Total Goals", winningOutcomeId:null, outcomes:[
+    { id:"m3", name:"Total Goals", winningOutcomeIds:null, outcomes:[
       { id:"m3a", label:"Over 2.5",  points:1.80 },
       { id:"m3b", label:"Under 2.5", points:2.05 } ] },
-    { id:"m4", name:"Correct Score", winningOutcomeId:null, outcomes:[
+    { id:"m4", name:"Correct Score", winningOutcomeIds:null, outcomes:[
       { id:"m4a", label:"2-1 City",    points:8.50 },
       { id:"m4b", label:"1-1 Draw",    points:7.00 },
       { id:"m4c", label:"2-2 Draw",    points:12.0 },
@@ -717,7 +717,7 @@ async function loadState(){
       ? { name:c.name, eventName:c.event_name, startTime:c.start_time, status:c.status }
       : { name:"", eventName:"", startTime:"", status:"Open" },
     participants: (parts.data||[]).map(p=>({ id:p.id, name:p.name, previousRank:p.previous_rank })),
-    markets: (mkts.data||[]).map(m=>({ id:m.id, name:m.name, winningOutcomeId:m.winning_outcome_id, sortOrder:m.sort_order, outcomes:byMarket[m.id]||[] })),
+    markets: (mkts.data||[]).map(m=>({ id:m.id, name:m.name, winningOutcomeIds:m.winning_outcome_ids, sortOrder:m.sort_order, outcomes:byMarket[m.id]||[] })),
     submissions: (subs.data||[]).map(s=>({ participantId:s.participant_id, selections:s.selections||{}, submittedAt:Date.parse(s.submitted_at)||Date.now(), locked:s.locked })),
     sgmBets: (sgms.data||[]).map(b=>({ id:b.id, participantId:b.participant_id, url:b.url, description:b.description, stake:Number(b.stake), odds:Number(b.odds), potentialReturn:Number(b.potential_return), status:b.status, submittedAt:Date.parse(b.submitted_at)||Date.now() })),
     currentUserId: getLocalUser()
@@ -743,6 +743,8 @@ function pickOf(sel){
 function findParticipant(id){ return state.participants.find(p=>p.id===id); }
 function findMarket(id){ return state.markets.find(m=>m.id===id); }
 function findOutcome(market, oid){ return market && market.outcomes.find(o=>o.id===oid); }
+function isSettled(m){ return Array.isArray(m.winningOutcomeIds); }
+function isWinner(m, oid){ return Array.isArray(m.winningOutcomeIds) && m.winningOutcomeIds.indexOf(oid)>=0; }
 function getSubmission(pid){ return state.submissions.find(s=>s.participantId===pid) || null; }
 
 function scoreParticipant(pid){
@@ -754,8 +756,8 @@ function scoreParticipant(pid){
       if(!pk || !pk.outcomeId || pk.stake<=0) continue;
       tipsBacked++;
       tipStaked += pk.stake;
-      if(!m.winningOutcomeId) continue;
-      if(pk.outcomeId === m.winningOutcomeId){
+      if(!isSettled(m)) continue;
+      if(isWinner(m, pk.outcomeId)){
         const o = findOutcome(m, pk.outcomeId);
         const win = pk.stake * (o?Number(o.points):0);
         tipPoints += win; winningTips++;
@@ -979,7 +981,7 @@ function renderTips(){
   html += `<button class="btn primary block" id="submitTips" style="margin-top:4px"${remain<0?' disabled':''}>Lock in my tips</button>`;
   body.innerHTML = html;
 }
-function anySettled(){ return state.markets.some(m=>m.winningOutcomeId); }
+function anySettled(){ return state.markets.some(m=>isSettled(m)); }
 
 function marketCat(m){
   const n=(m.name||"").toLowerCase();
@@ -1013,10 +1015,10 @@ function renderMarketForm(m){
 }
 function renderMarketReadonly(m, sel){
   const pk = pickOf(sel);
-  const settled = !!m.winningOutcomeId;
+  const settled = isSettled(m);
   const outs = m.outcomes.map(o=>{
     const isPick = pk && pk.outcomeId===o.id;
-    const isWin = settled && o.id===m.winningOutcomeId;
+    const isWin = isWinner(m, o.id);
     let cls="outcome"; if(isPick) cls+=" sel";
     if(settled){ if(isWin) cls+=" won"; else cls+=" lost"; }
     return `<button class="${cls}" disabled type="button"><span class="ol">${esc(o.label)}</span><span class="odds">${fmtPts(o.points)}</span></button>`;
@@ -1025,7 +1027,7 @@ function renderMarketReadonly(m, sel){
   if(pk && pk.outcomeId){
     if(settled){
       const po=findOutcome(m,pk.outcomeId);
-      tag = pk.outcomeId===m.winningOutcomeId
+      tag = isWinner(m, pk.outcomeId)
         ? `<span class="result-tag won">Won +${fmtPts(pk.stake*(po?Number(po.points):0))}</span>`
         : `<span class="result-tag lost">Lost $${fmtPts(pk.stake)}</span>`;
     } else { tag = `<span class="market-state">$${fmtPts(pk.stake)} on</span>`; }
@@ -1085,10 +1087,10 @@ function openProfile(pid){
       if(!pk || !pk.outcomeId) return "";
       const o = findOutcome(m,pk.outcomeId);
       if(!o) return "";
-      const settled = !!m.winningOutcomeId;
+      const settled = isSettled(m);
       let cls="pending", pv, note="Pending";
       if(settled){
-        if(pk.outcomeId===m.winningOutcomeId){ cls="won"; pv="+"+fmtPts(pk.stake*Number(o.points)); note="Won"; }
+        if(isWinner(m, pk.outcomeId)){ cls="won"; pv="+"+fmtPts(pk.stake*Number(o.points)); note="Won"; }
         else { cls="lost"; pv="0"; note="Lost"; }
       } else { pv=fmtPts(pk.stake*Number(o.points)); }
       return `<div class="pick-row ${cls}"><div class="pk"><div class="mk">${esc(m.name)} · $${fmtPts(pk.stake)} @ ${fmtPts(o.points)} · ${note}</div><div class="ch">${esc(o.label)}</div></div><div class="pv">${pv}</div></div>`;
@@ -1172,16 +1174,16 @@ function renderAdminPanel(){
 
   const marketsHtml = [...state.markets].reverse().map(m=>{
     const outs = m.outcomes.map(o=>{
-      const isWin = m.winningOutcomeId===o.id;
+      const isWin = isWinner(m, o.id);
       return `<div class="adm-out"><input class="labedit" type="text" data-editlabel="${o.id}" value="${esc(o.label)}" title="Outcome name"/>
         <input class="ptsedit" type="number" step="0.01" min="0" data-editout="${o.id}" value="${o.points}" title="Price (decimal odds)"/>
-        ${isWin?'<span class="winmark">WON</span>':`<button class="btn sm" data-adm="setWin" data-val="${m.id}:${o.id}">Win</button>`}
+        <button class="btn sm ${isWin?'primary':''}" data-adm="toggleWin" data-val="${m.id}:${o.id}">${isWin?'✓ Won':'Win'}</button>
         <button class="btn sm danger" data-adm="rmOut" data-val="${m.id}:${o.id}">✕</button></div>`;
     }).join("");
     const _search=(m.name+" "+m.outcomes.map(o=>o.label).join(" ")).toLowerCase();
-    return `<div class="adm-market" data-mname="${esc(_search)}" data-settled="${m.winningOutcomeId?'1':'0'}">
-      <div class="list-item" style="padding-top:0"><strong>${esc(m.name)} ${m.winningOutcomeId?'<span class="winmark">settled</span>':''}</strong>
-        <span>${m.winningOutcomeId?`<button class="btn sm" data-adm="clearWin" data-val="${m.id}">Unsettle</button>`:''}
+    return `<div class="adm-market" data-mname="${esc(_search)}" data-settled="${isSettled(m)?'1':'0'}">
+      <div class="list-item" style="padding-top:0"><strong>${esc(m.name)} ${isSettled(m)?`<span class="winmark">settled${m.winningOutcomeIds.length>1?' · '+m.winningOutcomeIds.length:''}</span>`:''}</strong>
+        <span>${isSettled(m)?`<button class="btn sm" data-adm="clearWin" data-val="${m.id}">Unsettle</button>`:''}
         <button class="btn sm danger" data-adm="rmMarket" data-val="${m.id}">Delete</button></span></div>
       ${outs}
       <div class="inline-add"><input placeholder="Outcome label" data-add="outLabel:${m.id}"/><input placeholder="Price" type="number" step="0.01" style="max-width:84px" data-add="outPts:${m.id}"/><button class="btn sm" data-adm="addOut" data-val="${m.id}">Add</button></div>
@@ -1197,7 +1199,7 @@ function renderAdminPanel(){
         <button class="btn sm" data-adm="sgmStatus" data-val="${b.id}:pending">P</button></span></div>`;
   }).join("") : `<div class="calc-note">No SGMs submitted.</div>`;
 
-  const nSettled=state.markets.filter(m=>m.winningOutcomeId).length;
+  const nSettled=state.markets.filter(m=>isSettled(m)).length;
   const nUnsettled=state.markets.length-nSettled;
   const sections = {
     competition: `<div class="admin-card">
@@ -1283,7 +1285,7 @@ async function handleAdminAction(action, val){
       const tpl=(($('[data-add="newMarketTpl"]')||{}).value)||"custom";
       const nextOrder=(state.markets.reduce((mx,m)=>Math.max(mx,m.sortOrder||0),0))+1;
       const mid=uid("m");
-      const r1=await sb.from("markets").insert({id:mid,name,winning_outcome_id:null,sort_order:nextOrder});
+      const r1=await sb.from("markets").insert({id:mid,name,winning_outcome_ids:null,sort_order:nextOrder});
       if(r1.error) return toast("Couldn't add market: "+r1.error.message,"err");
       const labels=templateOutcomes(tpl);
       if(labels.length){
@@ -1303,15 +1305,18 @@ async function handleAdminAction(action, val){
     }
     case "rmOut":{
       const [mid,oid]=val.split(":"); const m=findMarket(mid);
-      if(m && m.winningOutcomeId===oid) await sb.from("markets").update({winning_outcome_id:null}).eq("id",mid);
+      if(m && isWinner(m,oid)){ const arr=m.winningOutcomeIds.filter(x=>x!==oid); await sb.from("markets").update({winning_outcome_ids:arr}).eq("id",mid); }
       return void adminWrite(sb.from("outcomes").delete().eq("id",oid), "Outcome removed");
     }
-    case "setWin":{
-      const [mid,oid]=val.split(":");
-      return void adminWrite(sb.from("markets").update({winning_outcome_id:oid}).eq("id",mid), "Result marked");
+    case "toggleWin":{
+      const [mid,oid]=val.split(":"); const m=findMarket(mid);
+      if(!m) return;
+      const arr = Array.isArray(m.winningOutcomeIds) ? m.winningOutcomeIds.slice() : [];
+      const i=arr.indexOf(oid); if(i>=0) arr.splice(i,1); else arr.push(oid);
+      return void adminWrite(sb.from("markets").update({winning_outcome_ids:arr}).eq("id",mid), arr.length?"Winner updated":"Winners cleared");
     }
     case "clearWin":
-      return void adminWrite(sb.from("markets").update({winning_outcome_id:null}).eq("id",val), "Market unsettled");
+      return void adminWrite(sb.from("markets").update({winning_outcome_ids:null}).eq("id",val), "Market unsettled");
     case "sgmStatus":{
       const [bid,stt]=val.split(":");
       return void adminWrite(sb.from("sgm_bets").update({status:stt}).eq("id",bid), "SGM → "+stt);
@@ -1407,7 +1412,7 @@ async function resetToSeed(){
     const c=SEED.competition;
     await sb.from("competition").insert({id:1,name:c.name,event_name:c.eventName,start_time:c.startTime,status:c.status});
     await sb.from("participants").insert(SEED.participants.map(p=>({id:p.id,name:p.name,previous_rank:p.previousRank})));
-    await sb.from("markets").insert(SEED.markets.map((m,i)=>({id:m.id,name:m.name,winning_outcome_id:m.winningOutcomeId,sort_order:i+1})));
+    await sb.from("markets").insert(SEED.markets.map((m,i)=>({id:m.id,name:m.name,winning_outcome_ids:m.winningOutcomeIds,sort_order:i+1})));
     const outs=[]; SEED.markets.forEach(m=>m.outcomes.forEach(o=>outs.push({id:o.id,market_id:m.id,label:o.label,points:o.points})));
     await sb.from("outcomes").insert(outs);
     if(SEED.submissions.length) await sb.from("submissions").insert(SEED.submissions.map(s=>({participant_id:s.participantId,selections:s.selections,locked:true})));
