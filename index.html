@@ -462,6 +462,8 @@ section[hidden]{display:none}
 .aw-ic{font-size:18px;line-height:1}
 .aw-lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:7px}
 .aw-name{font-weight:800;font-size:14px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aw-run{font-size:11px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--line-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aw-run .mono{font-family:var(--mono);color:var(--text-2);font-weight:700}
 .aw-val{font-size:13px;color:var(--emerald);font-weight:700;margin-top:2px}
 .roineg{color:var(--red)}
 
@@ -787,13 +789,18 @@ function computeStandings(){
 }
 function computeAwards(){
   const rows = computeStandings();
-  function leader(fn){ let best=null; for(const r of rows){ const v=fn(r); if(v==null) continue; if(best==null||v>best.value) best={id:r.id,name:r.name,value:v}; } return best; }
+  function rank(fn){
+    const arr=[];
+    for(const r of rows){ const v=fn(r); if(v==null) continue; arr.push({id:r.id,name:r.name,value:v}); }
+    arr.sort((a,b)=> b.value-a.value || a.name.localeCompare(b.name));
+    return arr;
+  }
   return {
-    overall:       (rows[0] && rows[0].total>0) ? {id:rows[0].id,name:rows[0].name,value:rows[0].total} : null,
-    highestSingle: leader(r=>r.bestSingleWin>0?r.bestSingleWin:null),
-    mostWon:       leader(r=>r.betsWon>0?r.betsWon:null),
-    highestSgm:    leader(r=>r.bestSgmWin>0?r.bestSgmWin:null),
-    roi:           leader(r=> (r.roi!=null && r.roi>-1) ? r.roi : null)
+    overall:       rank(r=> r.total>0 ? r.total : null),
+    highestSingle: rank(r=> r.bestSingleWin>0 ? r.bestSingleWin : null),
+    mostWon:       rank(r=> r.betsWon>0 ? r.betsWon : null),
+    highestSgm:    rank(r=> r.bestSgmWin>0 ? r.bestSgmWin : null),
+    roi:           rank(r=> (r.roi!=null && r.roi>-1) ? r.roi : null)
   };
 }
 function renderAwards(){
@@ -807,9 +814,13 @@ function renderAwards(){
     {ic:"🎯", lab:"Most bets won",  d:a.mostWon,       fmt:v=>v+" won"},
     {ic:"💥", lab:"Top SGM win",    d:a.highestSgm,    fmt:v=>fmtPts(v)+" pts"},
     {ic:"📈", lab:"Best ROI",       d:a.roi,           fmt:v=>`<span class="${v<0?'roineg':''}">${fmtRoi(v)}</span>`}
-  ].filter(c=>c.d);
+  ].filter(c=>c.d && c.d.length);
   if(!cards.length){ host.innerHTML=""; return; }
-  host.innerHTML = `<div class="awards">`+cards.map(c=>`<div class="award-card" data-profile="${c.d.id}"><div class="aw-ic">${c.ic}</div><div class="aw-lab">${c.lab}</div><div class="aw-name">${esc(c.d.name)}</div><div class="aw-val mono">${c.fmt(c.d.value)}</div></div>`).join("")+`</div>`;
+  host.innerHTML = `<div class="awards">`+cards.map(c=>{
+    const lead=c.d[0], run=c.d[1];
+    const runHtml = run ? `<div class="aw-run">2nd · ${esc(run.name)} <span class="mono">${c.fmt(run.value)}</span></div>` : "";
+    return `<div class="award-card" data-profile="${lead.id}"><div class="aw-ic">${c.ic}</div><div class="aw-lab">${c.lab}</div><div class="aw-name">${esc(lead.name)}</div><div class="aw-val mono">${c.fmt(lead.value)}</div>${runHtml}</div>`;
+  }).join("")+`</div>`;
 }
 function round2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
 function fmtPts(n){ const v=round2(n); return Number.isInteger(v)?String(v):v.toFixed(2).replace(/\.?0+$/,""); }
