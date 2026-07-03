@@ -1051,8 +1051,8 @@ function renderSGM(){
   const who = $("#sgmFormWho");
   who.textContent = state.currentUserId ? "as "+findParticipant(state.currentUserId).name : "pick your name first";
   const feed = $("#sgmFeed");
-  const bets = [...state.sgmBets].sort((a,b)=>(b.submittedAt||0)-(a.submittedAt||0));
-  if(!bets.length){ feed.innerHTML = emptyBox("No SGMs yet","Be the first to post an SGM."); return; }
+  const bets = [...state.sgmBets].filter(b=>b.status!=="won" && b.status!=="lost").sort((a,b)=>(b.submittedAt||0)-(a.submittedAt||0));
+  if(!bets.length){ feed.innerHTML = emptyBox(state.sgmBets.length?"No live SGMs":"No SGMs yet", state.sgmBets.length?"Settled SGMs are cleared from the feed.":"Be the first to post an SGM."); return; }
   feed.innerHTML = bets.map(b=>{
     const p = findParticipant(b.participantId);
     const name = p ? p.name : "Unknown";
