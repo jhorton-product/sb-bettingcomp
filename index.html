@@ -172,14 +172,29 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 // ============================ CONFIG ===================================
 // Fill these two from Supabase -> Project Settings -> API.
-const SUPABASE_URL      = "YOUR_SUPABASE_URL";
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const SUPABASE_URL      = "https://bcerrledrkvvstwgoiqb.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjZXJybGVkcmt2dnN0d2dvaXFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDQ5NTQsImV4cCI6MjA5NzgyMDk1NH0.2XP-Z09-iEmLYrhgC7fmmnuC2mAE7HnkNeSTEOnDgB8";
 const ADMIN_PIN         = "4242";   // change me
 const LEAGUE_LABEL = { "nba":"NBA", "nfl":"NFL", "eng.1":"EPL" };
 // =======================================================================
 
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const app = document.getElementById("app");
+
+// Show real errors on screen instead of hanging on "Loading…".
+function fatal(msg){
+  app.innerHTML = `<div class="empty"><b>Something went wrong</b>
+    <span style="display:block;margin-top:6px;color:var(--muted);font-size:13px">${String(msg)}</span></div>`;
+}
+window.addEventListener("error", e => fatal(e.message || e.error));
+window.addEventListener("unhandledrejection", e => fatal(e.reason?.message || e.reason));
+
+let sb;
+try {
+  sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch (e) {
+  fatal("Couldn’t start: check SUPABASE_URL / SUPABASE_ANON_KEY. (" + e.message + ")");
+  throw e;
+}
 const $ = (s,r=document)=>r.querySelector(s);
 
 const state = {
