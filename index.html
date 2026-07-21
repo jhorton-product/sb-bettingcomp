@@ -213,7 +213,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // Fill these two from Supabase -> Project Settings -> API.
 const SUPABASE_URL      = "https://bcerrledrkvvstwgoiqb.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjZXJybGVkcmt2dnN0d2dvaXFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDQ5NTQsImV4cCI6MjA5NzgyMDk1NH0.2XP-Z09-iEmLYrhgC7fmmnuC2mAE7HnkNeSTEOnDgB8";
-const ADMIN_PIN         = "4242";   // change me
+// Admin passphrase now lives server-side in the admin-reset function, not here.
 const LEAGUE_LABEL = { "nba":"NBA", "nfl":"NFL", "eng.1":"EPL" };
 // =======================================================================
 
@@ -660,18 +660,29 @@ function renderWeek(games, teamId){
 }
 
 // ---- admin ----
-let adminOK=false;
+let adminOK=false, adminPin="";
+async function adminCall(payload){
+  const { data, error } = await sb.functions.invoke("admin-reset", { body: payload });
+  if (error) return { ok:false, error: error.message };
+  return data;
+}
 function renderAdmin(){
   if (!adminOK){
     app.innerHTML = `<p class="eyebrow">Admin</p>
       <div class="sheet" style="max-width:360px">
-        <label class="fld" for="pin">Enter admin PIN</label>
-        <input id="pin" type="password" inputmode="numeric"
+        <label class="fld" for="pin">Admin passphrase</label>
+        <input id="pin" type="password"
           style="background:var(--panel2);color:var(--chalk);border:1px solid var(--line);border-radius:9px;padding:11px 12px;width:100%;font-size:15px"/>
         <div style="height:12px"></div>
         <button class="btn" id="pinGo" style="width:100%">Unlock</button>
       </div>`;
-    $("#pinGo").onclick = ()=>{ if($("#pin").value===ADMIN_PIN){adminOK=true; renderAdmin();} else toast("Wrong PIN"); };
+    $("#pinGo").onclick = async ()=>{
+      const pin=$("#pin").value; const btn=$("#pinGo");
+      btn.disabled=true; btn.textContent="Checking…";
+      const res = await adminCall({ pin, action:"verify" });
+      if (res.ok){ adminOK=true; adminPin=pin; renderAdmin(); }
+      else { toast("Wrong passphrase"); btn.disabled=false; btn.textContent="Unlock"; }
+    };
     return;
   }
   app.innerHTML = `<p class="eyebrow">Admin · reset picks</p>
@@ -694,8 +705,9 @@ async function drawAdminList(){
     b.onclick = async ()=>{
       const id=Number(b.dataset.reset);
       if (!confirm("Reset this player’s picks? They’ll re-draft on next load.")) return;
-      const { error } = await sb.from("lb_picks").delete().eq("player_id", id);
-      if (error) return toast(error.message);
+      b.disabled=true; b.textContent="Resetting…";
+      const res = await adminCall({ pin: adminPin, action:"reset_picks", player_id: id });
+      if (!res.ok){ b.disabled=false; b.textContent="Reset picks"; return toast(res.error||"Failed"); }
       await loadOwners();
       if (id===state.me.id){ state.myPicks=[]; }
       toast("Picks reset."); drawAdminList();
