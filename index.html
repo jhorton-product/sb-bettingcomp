@@ -571,9 +571,11 @@ function renderMyTeam(){
     <div class="scoring" id="scoreBox" style="display:none">
       <div class="row"><span class="k">Your team wins (favourite)</span><span class="v">+10</span></div>
       <div class="row"><span class="k">Your team wins as underdog</span><span class="v">+20</span></div>
-      <div class="row"><span class="k">Win in a rivalry Derby 🔥</span><span class="v">+5 bonus</span></div>
+      <div class="row"><span class="k">Win in a rivalry Derby 🔥</span><span class="v">+5</span></div>
+      <div class="row"><span class="k">Win streak — 2nd in a row, 3rd, 4th…</span><span class="v">+2, +3, +4…</span></div>
+      <div class="row"><span class="k">Triple threat — all 3 teams win in a week</span><span class="v">+10</span></div>
       <div class="row"><span class="k">Draw or loss</span><span class="v">0</span></div>
-      <div class="note">Bonuses stack — an underdog win in a derby is worth 25. Favourite/underdog is set by the odds before kick-off.</div>
+      <div class="note">Bonuses stack — an underdog derby win on a hot streak piles up. Favourite/underdog is set by the odds before kick-off; a loss or draw resets your streak.</div>
     </div>
     <div class="myteam">
     ${Object.keys(LEAGUE_LABEL).map(lg=>{
