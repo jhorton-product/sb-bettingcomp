@@ -108,6 +108,24 @@
   table.lb .rank{font-family:var(--disp); font-size:18px; color:var(--muted); width:34px}
   table.lb tr.me{background:var(--panel)}
   table.lb tr.me .rank{color:var(--cyan)}
+  table.lb td.active, table.lb th.active{color:var(--cyan)}
+  .tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px}
+  .tile{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+        padding:11px 12px; cursor:pointer; text-align:left}
+  .tile[aria-pressed="true"]{border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan) inset}
+  .tile .tl{font-family:var(--disp); text-transform:uppercase; letter-spacing:.06em;
+            font-size:11px; color:var(--muted); display:flex; align-items:center; gap:5px}
+  .tile .tw{font-family:var(--disp); font-size:16px; font-weight:600; margin-top:7px;
+            line-height:1.05; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .tile .tvv{font-size:12px; color:var(--cyan); margin-top:2px}
+  .infline{display:inline-flex; align-items:center; gap:5px; color:var(--cyan);
+           cursor:pointer; font-size:13px; margin:2px 0 4px}
+  .scoring{background:var(--panel); border:1px solid var(--line); border-radius:10px;
+           padding:12px 14px; margin:8px 0 14px; font-size:13.5px}
+  .scoring .row{display:flex; justify-content:space-between; gap:12px; padding:3px 0}
+  .scoring .row .k{color:var(--muted)}
+  .scoring .row .v{font-family:var(--disp); color:var(--chalk)}
+  .scoring .note{color:var(--muted); font-size:12px; margin-top:8px; border-top:1px solid var(--line); padding-top:8px}
   .pts{font-family:var(--disp); font-size:19px; font-weight:700}
   .up{color:var(--gold)}
 
@@ -484,29 +502,64 @@ function gameCard(g){
 }
 
 // ---- leaderboard ----
+const METRICS = [
+  { key:"points",  label:"Points",     emoji:"🏆", unit:"pts" },
+  { key:"upsets",  label:"Upsets",     emoji:"🎯", unit:"" },
+  { key:"derbies", label:"Derby wins", emoji:"🔥", unit:"" },
+];
+let lbRows = [];
+const lbSort = { key:"points" };
+
 async function renderLeaderboard(){
   app.innerHTML = `<p class="eyebrow">Standings</p><div id="lbbox"><div class="empty">Loading…</div></div>`;
   const { data, error } = await sb.from("lb_leaderboard").select("*");
   const box=$("#lbbox");
   if (error){ box.innerHTML=`<div class="empty">${error.message}</div>`; return; }
-  const rows = (data||[]);
-  const anyPoints = rows.some(r=>Number(r.points)>0);
-  if (!anyPoints){
+  lbRows = data||[];
+  if (!lbRows.some(r=>Number(r.points)>0)){
     box.innerHTML = `<div class="empty"><b>No points on the board yet</b>
       Everyone starts level. Points land automatically as owned teams win.</div>`;
     return;
   }
-  box.innerHTML = `<table class="lb"><thead><tr>
-      <th>#</th><th>Player</th><th>Wins</th><th>Upsets</th><th>Pts</th>
+  drawLeaderboard();
+}
+
+function drawLeaderboard(){
+  const box = $("#lbbox");
+  // leader per metric
+  const tiles = METRICS.map(m=>{
+    const top = [...lbRows].sort((a,b)=> Number(b[m.key])-Number(a[m.key]) || Number(b.points)-Number(a.points))[0];
+    const val = top ? Number(top[m.key]) : 0;
+    return `<div class="tile" data-metric="${m.key}" aria-pressed="${lbSort.key===m.key}">
+      <div class="tl">${m.emoji} ${m.label}</div>
+      <div class="tw">${val>0 ? top.player : "—"}</div>
+      <div class="tvv">${val>0 ? val+(m.unit?" "+m.unit:"") : "no one yet"}</div>
+    </div>`;
+  }).join("");
+
+  const rows = [...lbRows].sort((a,b)=>
+    Number(b[lbSort.key])-Number(a[lbSort.key]) || Number(b.points)-Number(a.points) || a.player.localeCompare(b.player));
+
+  const cell = (r,key,cls="") => `<td class="tnum ${cls} ${lbSort.key===key?'active':''}">${Number(r[key])}</td>`;
+  box.innerHTML = `
+    <div class="tiles">${tiles}</div>
+    <table class="lb"><thead><tr>
+      <th>#</th><th>Player</th>
+      <th class="${lbSort.key==='upsets'?'active':''}">Ups</th>
+      <th class="${lbSort.key==='derbies'?'active':''}">Der</th>
+      <th class="${lbSort.key==='points'?'active':''}">Pts</th>
     </tr></thead><tbody>
     ${rows.map((r,i)=>`<tr class="${r.player===state.me.name?'me':''}">
       <td class="rank tnum">${i+1}</td>
       <td>${r.player}</td>
-      <td class="tnum">${r.wins}</td>
-      <td class="tnum up">${r.upsets}</td>
-      <td class="pts tnum">${Number(r.points)}</td>
+      ${cell(r,'upsets','up')}
+      ${cell(r,'derbies')}
+      <td class="pts tnum ${lbSort.key==='points'?'active':''}">${Number(r.points)}</td>
     </tr>`).join("")}
     </tbody></table>`;
+
+  box.querySelectorAll(".tile").forEach(t=>
+    t.onclick = ()=>{ lbSort.key = t.dataset.metric; drawLeaderboard(); });
 }
 
 // ---- my team ----
@@ -514,6 +567,14 @@ const rosterCache = {};
 function renderMyTeam(){
   const byLeague = Object.fromEntries(state.myPicks.map(p=>[p.league,p]));
   app.innerHTML = `<p class="eyebrow">My team — tap a club to see the squad</p>
+    <div class="infline" id="scoreInfo">ⓘ How points are awarded</div>
+    <div class="scoring" id="scoreBox" style="display:none">
+      <div class="row"><span class="k">Your team wins (favourite)</span><span class="v">+10</span></div>
+      <div class="row"><span class="k">Your team wins as underdog</span><span class="v">+20</span></div>
+      <div class="row"><span class="k">Win in a rivalry Derby 🔥</span><span class="v">+5 bonus</span></div>
+      <div class="row"><span class="k">Draw or loss</span><span class="v">0</span></div>
+      <div class="note">Bonuses stack — an underdog win in a derby is worth 25. Favourite/underdog is set by the odds before kick-off.</div>
+    </div>
     <div class="myteam">
     ${Object.keys(LEAGUE_LABEL).map(lg=>{
       const t = byLeague[lg]?.team;
@@ -530,6 +591,8 @@ function renderMyTeam(){
     }).join("")}
     </div>
     <p class="warn" style="text-align:left">Locked for the season. Ask an admin if you need a reset.</p>`;
+  const box=$("#scoreBox");
+  $("#scoreInfo").onclick = ()=>{ box.style.display = box.style.display==="none" ? "block" : "none"; };
   app.querySelectorAll(".card.clk").forEach(c=> c.onclick = ()=> toggleTeam(Number(c.dataset.team)));
 }
 
