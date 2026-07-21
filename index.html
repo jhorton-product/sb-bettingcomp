@@ -2,1665 +2,539 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>The Board — Team Betting Competition</title>
-<meta name="description" content="Internal team prediction & SGM competition portal." />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The League</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ============================================================================
-   THE BOARD — design tokens
-   A sportsbook "odds board": warm ink ground, emerald + gold, monospace figures.
-   ============================================================================ */
-:root{
-  --ink:#0B0F0E;            /* base background, near-black w/ green undertone */
-  --ink-2:#0E1413;
-  --surface:#12191A;        /* cards */
-  --surface-2:#182223;      /* elevated rows / inputs */
-  --surface-3:#1F2C2D;      /* hover */
-  --line:#26393A;           /* hairlines */
-  --line-soft:#1C2728;
+  /* ---- tokens ---------------------------------------------------------- */
+  :root{
+    --ink:#0d1220; --panel:#141b2e; --panel2:#1b2440; --line:#26314f;
+    --chalk:#eef1f7; --muted:#8791ad; --cyan:#37d0e8; --gold:#f5b642;
+    --win:#5ad19a; --loss:#e2607a;
+    --disp:'Barlow Condensed',system-ui,sans-serif;
+    --body:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--ink); color:var(--chalk); font-family:var(--body);
+    font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .tnum{font-variant-numeric:tabular-nums}
+  button{font-family:inherit; cursor:pointer}
+  a{color:var(--cyan)}
 
-  --emerald:#23D29B;        /* primary / win */
-  --emerald-dim:#0E8F6B;
-  --emerald-ghost:rgba(35,210,155,.12);
-  --red:#FF5C66;            /* loss */
-  --red-ghost:rgba(255,92,102,.12);
-  --gold:#F3C75A;           /* 1st */
-  --silver:#C7D0D4;         /* 2nd */
-  --bronze:#CF9259;         /* 3rd */
-  --amber:#F3A33A;          /* pending / live */
+  /* ---- top board ------------------------------------------------------- */
+  header.board{
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,var(--panel),var(--ink));
+    position:sticky; top:0; z-index:20;
+  }
+  .wrap{max-width:940px; margin:0 auto; padding:0 18px}
+  .board-in{display:flex; align-items:baseline; justify-content:space-between; padding:16px 0 0}
+  .mark{font-family:var(--disp); font-weight:700; font-size:30px; letter-spacing:.06em;
+        text-transform:uppercase; line-height:1}
+  .mark b{color:var(--cyan)}
+  .whoami{font-size:13px; color:var(--muted)}
+  .whoami b{color:var(--chalk); font-weight:600}
+  nav.tabs{display:flex; gap:2px; margin-top:14px}
+  nav.tabs button{
+    background:none; border:none; color:var(--muted);
+    font-family:var(--disp); font-weight:600; font-size:16px; letter-spacing:.05em;
+    text-transform:uppercase; padding:10px 14px; border-bottom:2px solid transparent;
+  }
+  nav.tabs button[aria-selected="true"]{color:var(--chalk); border-bottom-color:var(--cyan)}
 
-  --text:#EAF2EF;
-  --text-2:#A9B7B3;
-  --muted:#6F807C;
+  main{max-width:940px; margin:0 auto; padding:22px 18px 80px}
 
-  --radius:16px;
-  --radius-sm:10px;
-  --shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 18px 40px -24px rgba(0,0,0,.9);
+  /* ---- generic bits ---------------------------------------------------- */
+  .eyebrow{font-family:var(--disp); text-transform:uppercase; letter-spacing:.12em;
+           font-size:13px; color:var(--muted); margin:0 0 10px}
+  .segmented{display:inline-flex; background:var(--panel); border:1px solid var(--line);
+             border-radius:9px; padding:3px; gap:2px}
+  .segmented button{
+    background:none; border:none; color:var(--muted); border-radius:6px;
+    font-weight:600; font-size:13px; padding:7px 13px;
+  }
+  .segmented button[aria-pressed="true"]{background:var(--panel2); color:var(--chalk)}
+  .filters{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:18px}
+  .btn{background:var(--cyan); color:#04212a; border:none; border-radius:9px;
+       font-weight:600; font-size:15px; padding:12px 18px}
+  .btn.ghost{background:none; border:1px solid var(--line); color:var(--chalk)}
+  .btn.gold{background:var(--gold); color:#3a2600}
+  .btn[disabled]{opacity:.45; cursor:not-allowed}
+  select{
+    background:var(--panel); color:var(--chalk); border:1px solid var(--line);
+    border-radius:9px; padding:11px 12px; font-family:inherit; font-size:15px; width:100%;
+  }
+  .empty{border:1px dashed var(--line); border-radius:12px; padding:26px; text-align:center;
+         color:var(--muted)}
+  .empty b{color:var(--chalk); display:block; font-family:var(--disp); font-size:19px;
+           letter-spacing:.03em; margin-bottom:4px}
 
-  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,system-ui,sans-serif;
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,"Roboto Mono","JetBrains Mono",Menlo,Consolas,monospace;
-}
+  /* ---- fixture card ---------------------------------------------------- */
+  .day-label{font-family:var(--disp); text-transform:uppercase; letter-spacing:.08em;
+             color:var(--muted); font-size:14px; margin:20px 0 8px}
+  .game{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+        padding:0; margin-bottom:10px; overflow:hidden}
+  .game.derby{border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan) inset}
+  .derby-flag{background:var(--cyan); color:#04212a; font-family:var(--disp);
+              font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+              font-size:12px; padding:4px 12px}
+  .side{display:flex; align-items:flex-start; gap:12px; padding:13px 15px}
+  .side + .side{border-top:1px solid var(--line)}
+  .side img{width:30px; height:30px; object-fit:contain; margin-top:2px; flex:0 0 30px}
+  .side .tn{flex:1}
+  .side .team{font-family:var(--disp); font-size:19px; font-weight:600; letter-spacing:.02em}
+  .side .owners{font-size:12.5px; color:var(--muted); margin-top:2px}
+  .side .owners.none{opacity:.5; font-style:italic}
+  .side .sc{font-family:var(--disp); font-size:24px; font-weight:700}
+  .side.won .team{color:var(--win)}
+  .side.won .sc{color:var(--win)}
+  .meta{padding:8px 15px; background:var(--panel2); font-size:12px; color:var(--muted);
+        display:flex; justify-content:space-between}
+  .tag-fav{color:var(--gold)}
 
-*{box-sizing:border-box}
-html,body{margin:0;padding:0}
-body{
-  background:
-    radial-gradient(1200px 600px at 50% -10%, rgba(35,210,155,.06), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, rgba(243,199,90,.04), transparent 55%),
-    var(--ink);
-  color:var(--text);
-  font-family:var(--sans);
-  font-size:15px;
-  line-height:1.5;
-  -webkit-font-smoothing:antialiased;
-  text-rendering:optimizeLegibility;
-  min-height:100vh;
-  padding-bottom:env(safe-area-inset-bottom);
-}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
-.eyebrow{
-  font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--muted);font-weight:700;
-}
-button{font-family:inherit;cursor:pointer;color:inherit}
-input,select,textarea{font-family:inherit;font-size:15px}
-a{color:var(--emerald);text-decoration:none}
-a:hover{text-decoration:underline}
-:focus-visible{outline:2px solid var(--emerald);outline-offset:2px;border-radius:6px}
+  /* ---- leaderboard ----------------------------------------------------- */
+  table.lb{width:100%; border-collapse:collapse}
+  table.lb th{font-family:var(--disp); text-transform:uppercase; letter-spacing:.08em;
+              font-size:12px; color:var(--muted); text-align:right; padding:8px 10px;
+              border-bottom:1px solid var(--line)}
+  table.lb th:nth-child(2){text-align:left}
+  table.lb td{padding:11px 10px; border-bottom:1px solid var(--line); text-align:right}
+  table.lb td:nth-child(2){text-align:left; font-weight:600}
+  table.lb .rank{font-family:var(--disp); font-size:18px; color:var(--muted); width:34px}
+  table.lb tr.me{background:var(--panel)}
+  table.lb tr.me .rank{color:var(--cyan)}
+  .pts{font-family:var(--disp); font-size:19px; font-weight:700}
+  .up{color:var(--gold)}
 
-/* ----------------------------------------------------------------- layout */
-.wrap{max-width:880px;margin:0 auto;padding:0 16px}
+  /* ---- my team --------------------------------------------------------- */
+  .myteam{display:grid; grid-template-columns:1fr; gap:12px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+        padding:16px; display:flex; align-items:center; gap:14px}
+  .card img{width:44px; height:44px; object-fit:contain}
+  .card .lg{font-family:var(--disp); text-transform:uppercase; letter-spacing:.1em;
+            font-size:12px; color:var(--muted)}
+  .card .nm{font-family:var(--disp); font-size:22px; font-weight:600}
 
-/* ----------------------------------------------------------------- header */
-header.board{
-  position:relative;z-index:20;
-  background:linear-gradient(180deg, rgba(11,15,14,.92), rgba(11,15,14,.74));
-  border-bottom:1px solid var(--line-soft);
-}
-.board-top{
-  display:flex;align-items:center;justify-content:space-between;
-  gap:12px;padding:12px 0 10px;
-}
-.brand{display:flex;align-items:center;gap:10px;min-width:0}
-.brand .logo{
-  width:34px;height:34px;border-radius:9px;flex:none;
-  background:linear-gradient(145deg,var(--emerald),var(--emerald-dim));
-  display:grid;place-items:center;color:#04140F;font-weight:900;font-size:18px;
-  box-shadow:0 6px 20px -8px rgba(35,210,155,.7);
-}
-.brand .names{min-width:0}
-.brand .comp{font-weight:800;font-size:15px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.brand .comp small{color:var(--muted);font-weight:600}
-
-.board-tools{display:flex;align-items:center;gap:8px;flex:none}
-.userpick{
-  display:flex;align-items:center;gap:7px;
-  background:var(--surface-2);border:1px solid var(--line);
-  border-radius:999px;padding:5px 6px 5px 11px;max-width:180px;
-}
-.userpick .dot{width:7px;height:7px;border-radius:50%;background:var(--emerald);flex:none;box-shadow:0 0 0 3px var(--emerald-ghost)}
-.userpick select{
-  background:transparent;border:none;color:var(--text);font-weight:700;font-size:13px;
-  max-width:120px;text-overflow:ellipsis;padding-right:2px;
-}
-.userpick select:focus{outline:none}
-.iconbtn{
-  width:36px;height:36px;border-radius:10px;flex:none;
-  background:var(--surface-2);border:1px solid var(--line);
-  display:grid;place-items:center;color:var(--text-2);
-}
-.iconbtn:hover{background:var(--surface-3);color:var(--text)}
-
-/* event marquee row */
-.event-row{
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  padding:4px 0 14px;
-}
-.event-name{font-weight:800;font-size:clamp(18px,3.4vw,24px);letter-spacing:-.02em;line-height:1.1}
-.event-name .vs{color:var(--muted);font-weight:600;margin:0 6px}
-.status-pill{
-  display:inline-flex;align-items:center;gap:7px;
-  font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
-  padding:6px 11px;border-radius:999px;border:1px solid var(--line);
-  background:var(--surface-2);color:var(--text-2);white-space:nowrap;
-}
-.status-pill .pulse{width:8px;height:8px;border-radius:50%;background:var(--muted)}
-.status-open{color:var(--emerald);border-color:rgba(35,210,155,.4);background:var(--emerald-ghost)}
-.status-open .pulse{background:var(--emerald);animation:pulse 1.8s infinite}
-.status-locked{color:var(--amber);border-color:rgba(243,163,58,.4);background:rgba(243,163,58,.1)}
-.status-locked .pulse{background:var(--amber)}
-.status-live{color:var(--red);border-color:rgba(255,92,102,.4);background:var(--red-ghost)}
-.status-live .pulse{background:var(--red);animation:pulse 1.1s infinite}
-.status-done{color:var(--text-2)}
-@keyframes pulse{0%{box-shadow:0 0 0 0 currentColor;opacity:1}70%{box-shadow:0 0 0 7px transparent;opacity:.6}100%{opacity:1}}
-
-/* countdown / meta strip */
-.metastrip{
-  display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;
-  padding-bottom:12px;
-}
-.countdown{display:flex;align-items:flex-end;gap:8px}
-.cd-unit{display:flex;flex-direction:column;align-items:center;gap:3px}
-.cd-num{
-  font-family:var(--mono);font-variant-numeric:tabular-nums;
-  font-size:clamp(22px,5vw,30px);font-weight:700;line-height:1;letter-spacing:-.02em;
-  background:linear-gradient(180deg,#fff,#9fb3ad);-webkit-background-clip:text;background-clip:text;color:transparent;
-}
-.cd-sep{font-family:var(--mono);font-size:22px;color:var(--line);font-weight:700;padding-bottom:14px}
-.cd-lab{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:700}
-.countdown.done .cd-num{background:linear-gradient(180deg,var(--red),#b53b43);-webkit-background-clip:text;background-clip:text}
-.meta-right{text-align:right}
-.meta-right .big{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1}
-.meta-right .lab{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:700}
-
-/* ----------------------------------------------------------------- tabs */
-.tabbar{
-  position:sticky;top:0;z-index:30;
-  background:linear-gradient(180deg,var(--ink) 60%,rgba(11,15,14,.7));
-  backdrop-filter:blur(12px);border-bottom:1px solid var(--line-soft);
-}
-.tabs{
-  display:flex;gap:4px;
-  background:var(--surface);border:1px solid var(--line);border-radius:999px;
-  padding:4px;margin:10px 0;
-}
-.tab{
-  flex:1;border:none;background:transparent;color:var(--text-2);
-  font-weight:700;font-size:13px;letter-spacing:.01em;
-  padding:9px 6px;border-radius:999px;transition:.18s;white-space:nowrap;
-  display:flex;align-items:center;justify-content:center;gap:6px;
-}
-.tab .badge{font-family:var(--mono);font-size:11px;background:var(--surface-3);color:var(--text-2);padding:1px 6px;border-radius:999px}
-.tab.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F;box-shadow:0 8px 22px -12px rgba(35,210,155,.8)}
-.tab.active .badge{background:rgba(4,20,15,.22);color:#04140F}
-
-main{padding-bottom:60px}
-section[hidden]{display:none}
-.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:22px 2px 12px}
-.section-head h2{font-size:18px;font-weight:800;letter-spacing:-.02em;margin:0}
-.section-head .hint{font-size:12px;color:var(--muted)}
-
-/* ----------------------------------------------------------------- card */
-.card{
-  background:linear-gradient(180deg,var(--surface),var(--ink-2));
-  border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
-}
-
-/* ----------------------------------------------------------------- leaderboard */
-.lb{display:flex;flex-direction:column;gap:8px}
-.lb-row{
-  position:relative;display:grid;
-  grid-template-columns:42px 1fr auto;gap:12px;align-items:center;
-  padding:13px 16px 13px 12px;border-radius:14px;
-  background:linear-gradient(180deg,var(--surface),var(--ink-2));
-  border:1px solid var(--line);cursor:pointer;transition:.16s;
-  width:100%;text-align:left;
-}
-.lb-row:hover{border-color:var(--emerald-dim);transform:translateY(-1px)}
-.lb-rank{display:flex;flex-direction:column;align-items:center;gap:2px}
-.rank-num{
-  font-family:var(--mono);font-weight:700;font-size:18px;
-  width:32px;height:32px;border-radius:9px;display:grid;place-items:center;
-  background:var(--surface-2);color:var(--text-2);border:1px solid var(--line);
-}
-.move{font-size:10px;font-weight:800;display:flex;align-items:center;gap:1px;height:11px}
-.move.up{color:var(--emerald)}.move.down{color:var(--red)}.move.flat{color:var(--muted)}
-.lb-name{min-width:0}
-.lb-name .nm{font-weight:800;font-size:15.5px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
-.chip{
-  font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-2);
-  background:var(--surface-2);border:1px solid var(--line-soft);
-  padding:2px 7px;border-radius:7px;white-space:nowrap;
-}
-.chip.win{color:var(--emerald)} .chip.loss{color:var(--red)}
-.lb-total{display:flex;flex-direction:column;align-items:flex-end}
-.lb-total .pts{font-family:var(--mono);font-weight:700;font-size:22px;line-height:1;letter-spacing:-.02em}
-.lb-total .lab{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:3px}
-
-/* medals */
-.lb-row.r1{border-color:rgba(243,199,90,.55);background:linear-gradient(180deg,rgba(243,199,90,.10),var(--ink-2))}
-.lb-row.r1 .rank-num{background:linear-gradient(145deg,var(--gold),#b8902f);color:#2a1f02;border-color:transparent}
-.lb-row.r1 .pts{color:var(--gold)}
-.lb-row.r2{border-color:rgba(199,208,212,.4)}
-.lb-row.r2 .rank-num{background:linear-gradient(145deg,var(--silver),#8b9498);color:#1a1f20;border-color:transparent}
-.lb-row.r3{border-color:rgba(207,146,89,.4)}
-.lb-row.r3 .rank-num{background:linear-gradient(145deg,var(--bronze),#915f33);color:#1a0f06;border-color:transparent}
-.crown{position:absolute;top:-9px;left:6px;font-size:15px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
-
-/* ----------------------------------------------------------------- generic empty */
-.empty{
-  text-align:center;padding:38px 20px;color:var(--muted);
-  border:1px dashed var(--line);border-radius:var(--radius);
-}
-.empty strong{display:block;color:var(--text-2);font-size:15px;margin-bottom:4px}
-
-/* ----------------------------------------------------------------- tips */
-.notice{
-  display:flex;gap:11px;align-items:flex-start;padding:13px 15px;border-radius:12px;
-  background:var(--surface-2);border:1px solid var(--line);margin-bottom:14px;font-size:13.5px;color:var(--text-2);
-}
-.notice .ic{flex:none;margin-top:1px}
-.notice.warn{background:rgba(243,163,58,.08);border-color:rgba(243,163,58,.3);color:#f4c98a}
-.notice.lock{background:var(--emerald-ghost);border-color:rgba(35,210,155,.3);color:#9be9cf}
-
-.market{padding:15px 16px;margin-bottom:12px}
-.market-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
-.market-head .mname{font-weight:800;font-size:15px;letter-spacing:-.01em}
-.market-state{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.market-state.settled{color:var(--emerald)}
-.outcomes{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:8px}
-.outcome{
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:11px 13px;border-radius:11px;text-align:left;
-  background:var(--surface-2);border:1px solid var(--line);color:var(--text);
-  transition:.14s;font-weight:600;width:100%;
-}
-.outcome:hover:not(:disabled){border-color:var(--emerald-dim)}
-.outcome .ol{font-size:13.5px;line-height:1.25;min-width:0;white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
-.outcome .odds{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--emerald);flex:none}
-.outcome.sel{background:var(--emerald-ghost);border-color:var(--emerald);box-shadow:0 0 0 1px var(--emerald) inset}
-.outcome.sel .ol{color:#fff;font-weight:800}
-.outcome.won{background:var(--emerald-ghost);border-color:var(--emerald)}
-.outcome.won .odds{color:var(--emerald)}
-.outcome.lost{opacity:.5}
-.outcome.lost.sel{background:var(--red-ghost);border-color:var(--red);box-shadow:0 0 0 1px var(--red) inset;opacity:1}
-.outcome.lost.sel .odds{color:var(--red)}
-.outcome:disabled{cursor:default}
-.result-tag{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:6px}
-.result-tag.won{color:var(--emerald);background:var(--emerald-ghost)}
-.result-tag.lost{color:var(--red);background:var(--red-ghost)}
-
-/* ----------------------------------------------------------------- buttons */
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  border:1px solid var(--line);background:var(--surface-2);color:var(--text);
-  font-weight:700;font-size:14px;padding:12px 18px;border-radius:12px;transition:.15s;
-}
-.btn:hover{background:var(--surface-3)}
-.btn.primary{
-  background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F;border-color:transparent;
-  box-shadow:0 12px 26px -14px rgba(35,210,155,.9);
-}
-.btn.primary:hover{filter:brightness(1.06)}
-.btn.danger{color:var(--red);border-color:rgba(255,92,102,.35);background:var(--red-ghost)}
-.btn.ghost{background:transparent}
-.btn.block{width:100%}
-.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
-.btn.sm{padding:8px 13px;font-size:13px;border-radius:10px}
-
-/* ----------------------------------------------------------------- betting slip (signature) */
-.slip{
-  position:relative;background:linear-gradient(180deg,var(--surface),var(--ink-2));
-  border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;
-  overflow:hidden;
-}
-.slip-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:16px;margin-bottom:16px;border-bottom:2px dashed var(--line)}
-.slip-head::before,.slip-head::after{content:"";position:absolute;bottom:-8px;width:16px;height:16px;border-radius:50%;background:var(--ink);border:1px solid var(--line)}
-.slip-head::before{left:-24px}
-.slip-head::after{right:-24px}
-.slip-user{display:flex;align-items:center;gap:9px;min-width:0}
-.avatar{
-  width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;
-  font-weight:800;font-size:13px;color:#04140F;background:linear-gradient(145deg,var(--emerald),var(--emerald-dim));
-}
-.slip-user .u-meta{min-width:0}
-.slip-user .u-name{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slip-user .u-time{font-size:11px;color:var(--muted)}
-.slip-status{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;border:1px solid var(--line);flex:none}
-.slip-status.pending{color:var(--amber);background:rgba(243,163,58,.1);border-color:rgba(243,163,58,.35)}
-.slip-status.won{color:var(--emerald);background:var(--emerald-ghost);border-color:rgba(35,210,155,.4)}
-.slip-status.lost{color:var(--red);background:var(--red-ghost);border-color:rgba(255,92,102,.4)}
-.slip-desc{font-weight:700;font-size:15px;letter-spacing:-.01em;margin:4px 0 12px}
-.slip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-soft);border-radius:11px;overflow:hidden}
-.slip-cell{background:var(--surface-2);padding:10px 12px}
-.slip-cell .l{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
-.slip-cell .v{font-family:var(--mono);font-weight:700;font-size:16px;margin-top:3px}
-.slip-cell.ret .v{color:var(--emerald)}
-.slip-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
-.slip-foot .award{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--emerald)}
-.slip-link{font-size:12px;color:var(--text-2);display:inline-flex;align-items:center;gap:5px}
-
-/* ----------------------------------------------------------------- forms */
-.field{margin-bottom:13px}
-.field label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:6px}
-.field input,.field select,.field textarea{
-  width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--text);
-  border-radius:11px;padding:12px 13px;transition:.14s;
-}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--emerald);background:var(--ink-2)}
-.field .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.calc-note{font-size:12px;color:var(--muted);margin-top:-4px}
-.collapse-head{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:14px 16px;cursor:pointer;user-select:none;
-}
-.collapse-head .ttl{font-weight:800;font-size:15px}
-.collapse-body{padding:0 16px 16px;border-top:1px solid var(--line-soft)}
-
-/* ----------------------------------------------------------------- modal / overlay */
-.overlay{
-  position:fixed;inset:0;z-index:60;background:rgba(4,8,7,.72);backdrop-filter:blur(6px);
-  display:flex;align-items:flex-end;justify-content:center;padding:0;
-  animation:fade .2s ease;
-}
-@media(min-width:640px){.overlay{align-items:center;padding:24px}}
-@keyframes fade{from{opacity:0}to{opacity:1}}
-.sheet{
-  width:100%;max-width:620px;max-height:92vh;overflow:auto;-webkit-overflow-scrolling:touch;
-  background:linear-gradient(180deg,var(--surface),var(--ink));
-  border:1px solid var(--line);border-radius:20px 20px 0 0;
-  animation:rise .26s cubic-bezier(.2,.8,.2,1);
-}
-@media(min-width:640px){.sheet{border-radius:20px}}
-@keyframes rise{from{transform:translateY(28px);opacity:.6}to{transform:translateY(0);opacity:1}}
-.sheet-head{
-  position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:16px 18px;background:linear-gradient(180deg,var(--surface),rgba(18,25,26,.86));
-  backdrop-filter:blur(8px);border-bottom:1px solid var(--line-soft);
-}
-.sheet-head h3{margin:0;font-size:17px;font-weight:800;letter-spacing:-.02em}
-.sheet-head .sub{font-size:12px;color:var(--muted)}
-.sheet-body{padding:18px}
-.close{width:32px;height:32px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;color:var(--text-2);flex:none}
-.close:hover{color:var(--text);background:var(--surface-3)}
-
-/* profile summary */
-.psum{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line-soft);border-radius:13px;overflow:hidden;margin-bottom:18px}
-.psum .c{background:var(--surface-2);padding:13px 10px;text-align:center}
-.psum .v{font-family:var(--mono);font-weight:700;font-size:19px;line-height:1}
-.psum .l{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:5px}
-.psum .c.tot .v{color:var(--gold)}
-.detail-h{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:18px 0 9px}
-.pick-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:10px;margin-bottom:7px}
-.pick-row .pk{min-width:0}
-.pick-row .mk{font-size:11px;color:var(--muted)}
-.pick-row .ch{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pick-row .pv{font-family:var(--mono);font-weight:700;font-size:14px;flex:none}
-.pick-row.won{border-color:rgba(35,210,155,.35)}.pick-row.won .pv{color:var(--emerald)}
-.pick-row.lost .pv{color:var(--red)}.pick-row.lost{opacity:.75}
-.pick-row.pending .pv{color:var(--amber)}
-
-/* admin */
-.admin-sec{margin-bottom:20px}
-.admin-sec > .h{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--emerald);font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.admin-card{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px}
-.btn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
-.list-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
-.list-item:last-child{border-bottom:none}
-.inline-add{display:flex;gap:8px;margin-top:10px}
-.inline-add input,.inline-add select{flex:1}
-.adm-market{border:1px solid var(--line-soft);border-radius:11px;padding:12px;margin-bottom:10px;background:var(--ink-2)}
-.adm-out{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
-.adm-out:last-child{border-bottom:none}
-.adm-out .lab{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.adm-out .pts{font-family:var(--mono);color:var(--emerald);font-weight:700}
-.adm-out button{font-size:11px;padding:4px 9px}
-.winmark{font-size:10px;font-weight:800;color:var(--emerald);background:var(--emerald-ghost);padding:2px 6px;border-radius:6px}
-.admtabs{display:flex;gap:4px;overflow-x:auto;margin:0 0 16px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px;scrollbar-width:none}
-.admtabs::-webkit-scrollbar{display:none}
-.admtab{flex:none;border:none;background:transparent;color:var(--text-2);font-weight:700;font-size:12.5px;padding:8px 13px;border-radius:9px;white-space:nowrap;cursor:pointer}
-.admtab.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F}
-.adm-out input.ptsedit{width:74px;flex:none;background:var(--ink-2);border:1px solid var(--line);color:var(--emerald);font-family:var(--mono);font-weight:700;border-radius:8px;padding:5px 7px;text-align:right}
-.adm-out input.ptsedit:focus{outline:none;border-color:var(--emerald)}
-.adm-out input.labedit{flex:1;min-width:0;background:var(--ink-2);border:1px solid var(--line);color:var(--text);font-weight:700;border-radius:8px;padding:5px 9px;font-size:13px}
-.adm-out input.labedit:focus{outline:none;border-color:var(--emerald)}
-.inline-add input,.inline-add select{background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 11px;font-size:14px}
-.inline-add input:focus,.inline-add select:focus{outline:none;border-color:var(--emerald)}
-.tpl-sel{flex:1;min-width:0}
-
-/* toast */
-#toast{
-  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
-  z-index:80;background:var(--surface-3);border:1px solid var(--emerald-dim);
-  color:var(--text);padding:12px 18px;border-radius:12px;font-weight:700;font-size:14px;
-  box-shadow:0 20px 40px -16px rgba(0,0,0,.8);opacity:0;pointer-events:none;transition:.28s;
-  display:flex;align-items:center;gap:9px;max-width:90vw;
-}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-#toast.err{border-color:var(--red)}
-
-.foot{text-align:center;color:var(--muted);font-size:12px;padding:30px 0 40px}
-.foot code{font-family:var(--mono);color:var(--text-2)}
-.bankroll{position:sticky;top:64px;z-index:5;background:linear-gradient(180deg,var(--surface),var(--ink-2));border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
-.bk-top{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--text-2)}
-.bk-top b{font-size:21px;color:var(--emerald);margin-left:auto;font-family:var(--mono)}
-.bk-top b.over{color:var(--red)}
-.bk-of{color:var(--muted);font-size:12px}
-.bk-bar{height:7px;border-radius:4px;background:var(--surface-3);margin-top:9px;overflow:hidden}
-.bk-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--emerald-dim),var(--emerald));transition:width .2s}
-.stake-row{display:flex;flex-direction:column;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
-.stake-main{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.qbtn{flex:none;background:var(--surface-2);border:1px solid var(--line);color:var(--text);font-weight:700;font-size:13px;padding:7px 13px;border-radius:9px;font-family:var(--mono)}
-.qbtn:hover{border-color:var(--emerald-dim);background:var(--surface-3)}
-.qbtn.clr{color:var(--muted);margin-left:auto;font-family:var(--sans);font-weight:600}
-.stake-input{display:flex;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:6px 11px}
-.stake-input>span{color:var(--muted);font-weight:700}
-.stake-input input{width:88px;background:transparent;border:none;color:var(--text);font-family:var(--mono);font-weight:700;font-size:16px}
-.stake-input input:focus{outline:none}
-.to-win{font-size:13px;color:var(--text-2)}
-.to-win b{font-family:var(--mono);color:var(--emerald)}
-.awards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px}
-.award-card{background:linear-gradient(180deg,var(--surface),var(--ink-2));border:1px solid var(--line);border-radius:13px;padding:12px 13px;cursor:pointer;transition:.16s}
-.award-card:hover{border-color:var(--emerald-dim);transform:translateY(-1px)}
-.mkt-search{width:100%;background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:14px}
-.mkt-search:focus{outline:none;border-color:var(--emerald)}
-.mktfilter{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:12px}
-.mktfilter button{flex:1;border:none;background:transparent;color:var(--text-2);font-weight:700;font-size:12px;padding:7px 6px;border-radius:8px;white-space:nowrap;cursor:pointer}
-.mktfilter button.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F}
-.tipcats{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:14px}
-.tipcats button{flex:1;border:none;background:transparent;color:var(--text-2);font-weight:700;font-size:13px;padding:9px 6px;border-radius:999px;cursor:pointer;white-space:nowrap}
-.tipcats button.active{background:linear-gradient(180deg,var(--emerald),var(--emerald-dim));color:#04140F}
-.idprompt{max-width:380px;margin:26px auto;text-align:center;background:linear-gradient(180deg,var(--surface),var(--ink-2));border:1px solid var(--line);border-radius:16px;padding:30px 22px;box-shadow:var(--shadow)}
-.idp-emoji{font-size:34px;line-height:1}
-.idprompt h3{margin:10px 0 6px;font-size:20px;font-weight:800;letter-spacing:-.02em}
-.idprompt>p{color:var(--text-2);font-size:13.5px;margin:0 auto 16px;max-width:300px}
-.idprompt select{width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:11px;padding:12px 13px;margin-bottom:12px;font-size:15px}
-.idprompt select:focus{outline:none;border-color:var(--emerald)}
-.idp-note{font-size:12px;color:var(--muted);margin:14px 0 0 !important}
-.aw-ic{font-size:18px;line-height:1}
-.aw-lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:7px}
-.aw-name{font-weight:800;font-size:14px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.aw-run{font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.aw-run:first-of-type{margin-top:6px;padding-top:6px;border-top:1px solid var(--line-soft)}
-.aw-run .mono{font-family:var(--mono);color:var(--text-2);font-weight:700}
-.aw-val{font-size:13px;color:var(--emerald);font-weight:700;margin-top:2px}
-.roineg{color:var(--red)}
-
-@media (max-width:520px){
-  .slip-grid{grid-template-columns:repeat(3,1fr)}
-  .psum{grid-template-columns:repeat(2,1fr)}
-  .userpick{max-width:140px}
-  .userpick select{max-width:88px}
-}
-@media (prefers-reduced-motion:reduce){
-  *{animation-duration:.001ms !important;transition-duration:.001ms !important}
-}
+  /* ---- onboarding / gate ---------------------------------------------- */
+  .center{min-height:70vh; display:flex; align-items:center; justify-content:center}
+  .sheet{background:var(--panel); border:1px solid var(--line); border-radius:16px;
+         padding:26px; width:100%; max-width:440px}
+  .sheet h2{font-family:var(--disp); font-size:26px; font-weight:700; letter-spacing:.03em;
+            margin:0 0 4px; text-transform:uppercase}
+  .sheet p.sub{color:var(--muted); margin:0 0 20px; font-size:14px}
+  .roll{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:18px 0}
+  .roll .slot{background:var(--panel2); border:1px solid var(--line); border-radius:10px;
+              padding:12px 8px; text-align:center}
+  .roll .slot .lg{font-family:var(--disp); text-transform:uppercase; letter-spacing:.08em;
+                  font-size:11px; color:var(--muted)}
+  .roll .slot img{width:34px; height:34px; object-fit:contain; margin:6px 0}
+  .roll .slot .nm{font-family:var(--disp); font-size:15px; font-weight:600; line-height:1.1}
+  .roll .slot.empty-slot{color:var(--muted); display:flex; align-items:center;
+                         justify-content:center; min-height:88px}
+  .stack{display:flex; flex-direction:column; gap:10px}
+  .divider{display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px;
+           text-transform:uppercase; letter-spacing:.1em; margin:6px 0}
+  .divider::before,.divider::after{content:""; flex:1; height:1px; background:var(--line)}
+  .warn{font-size:12.5px; color:var(--gold); margin-top:14px; text-align:center}
+  .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+         background:var(--panel2); border:1px solid var(--line); border-radius:10px;
+         padding:12px 18px; font-size:14px; z-index:50}
+  label.fld{display:block; font-size:12.5px; color:var(--muted); margin:0 0 6px}
 </style>
 </head>
 <body>
 
-<!-- =========================================================================
-     EDITABLE DATA  —  Everything a non-engineer needs to change lives here.
-     Read the comments. Change the values. Reload the page.
-     IDs (the "id" fields) must stay unique and are used to link things together.
-     ========================================================================= -->
-<script>
-/* ============================================================================
-   THE BOARD — settings you can edit
-   ============================================================================ */
-
-/* ---- 1) YOUR SUPABASE PROJECT --------------------------------------------
-   These two values connect the app to your database. The publishable key is
-   built to live in a public web page, so it's safe to deploy.
-   (Supabase: Project Settings -> API Keys -> Publishable key, and the
-   Project URL from Settings -> Data API.)                                   */
-const SUPABASE_URL = "https://bcerrledrkvvstwgoiqb.supabase.co";
-const SUPABASE_KEY = "sb_publishable_u4MyKCJyBnygNiMAqjfavw_mkpDHcID";
-
-/* ---- 2) SAFETY RE-SYNC INTERVAL (seconds) --------------------------------
-   Updates are instant via Supabase Realtime. This is only a backstop refetch
-   in case a live message is ever missed or the connection blips.           */
-const POLL_SECONDS = 20;
-
-/* ---- starting wallet each player gets to spread across their tips -------- */
-const STARTING_BANKROLL = 1000;
-
-/* ---- 3) SEED DATA --------------------------------------------------------
-   Your LIVE data now lives in Supabase, not here. This block is used only by
-   the admin "Reset to seed data" button (and mirrors setup.sql). To change
-   the real competition, sign into the in-app admin panel with your Supabase
-   account, or edit the tables in the Supabase dashboard.                    */
-const SEED = {
-  competition: {
-    name: "Friday Footy Cup",
-    eventName: "Manchester City vs Arsenal",
-    startTime: "2026-06-26T19:30:00+10:00",
-    status: "Open"
-  },
-  participants: [
-    { id:"p2", name:"Ryan" },
-    { id:"p3", name:"Ajay" },
-    { id:"p4", name:"Danielle" },
-    { id:"p5", name:"Jake" },
-    { id:"p6", name:"Angeline" },
-    { id:"p7", name:"Sushil" },
-    { id:"p8", name:"Simon" },
-    { id:"p9", name:"Julu" },
-    { id:"p10", name:"Ben" },
-    { id:"p11", name:"David" },
-    { id:"p12", name:"Anna" },
-    { id:"p13", name:"Rul" },
-    { id:"p14", name:"Long" },
-    { id:"p15", name:"Yutian" },
-    { id:"p16", name:"Charlie" },
-    { id:"p17", name:"Henry" },
-    { id:"p18", name:"Gavin" },
-    { id:"p19", name:"Ahilya" },
-    { id:"p20", name:"James" },
-    { id:"p21", name:"Tharusha" },
-    { id:"p22", name:"Deepen" },
-    { id:"p23", name:"Winnie" },
-    { id:"p24", name:"Alex" },
-    { id:"p25", name:"Carlos" },
-    { id:"p26", name:"Luis" },
-    { id:"p27", name:"Mingkai" },
-    { id:"p28", name:"Phillip" },
-    { id:"p29", name:"Chris" },
-    { id:"p30", name:"JD" }
-  ],
-  markets: [
-    { id:"m1", name:"Match Winner", winningOutcomeIds:null, outcomes:[
-      { id:"m1a", label:"Man City", points:1.90 },
-      { id:"m1b", label:"Draw",     points:3.60 },
-      { id:"m1c", label:"Arsenal",  points:4.20 } ] },
-    { id:"m2", name:"First Goalscorer", winningOutcomeIds:null, outcomes:[
-      { id:"m2a", label:"E. Haaland", points:3.25 },
-      { id:"m2b", label:"B. Saka",    points:5.50 },
-      { id:"m2c", label:"P. Foden",   points:6.00 },
-      { id:"m2d", label:"K. Havertz", points:7.50 } ] },
-    { id:"m3", name:"Total Goals", winningOutcomeIds:null, outcomes:[
-      { id:"m3a", label:"Over 2.5",  points:1.80 },
-      { id:"m3b", label:"Under 2.5", points:2.05 } ] },
-    { id:"m4", name:"Correct Score", winningOutcomeIds:null, outcomes:[
-      { id:"m4a", label:"2-1 City",    points:8.50 },
-      { id:"m4b", label:"1-1 Draw",    points:7.00 },
-      { id:"m4c", label:"2-2 Draw",    points:12.0 },
-      { id:"m4d", label:"1-2 Arsenal", points:13.0 } ] }
-  ],
-  submissions: [],
-  sgmBets: []
-};
-</script>
-
-<!-- ========================= MARKUP SHELL ========================= -->
-<header class="board">
+<header class="board" id="topbar" hidden>
   <div class="wrap">
-    <div class="board-top">
-      <div class="brand">
-        <div class="logo">B</div>
-        <div class="names">
-          <div class="comp" id="compName">—</div>
-          <div class="eyebrow" id="compTag">The Board</div>
-        </div>
-      </div>
-      <div class="board-tools">
-        <label class="userpick" title="Choose who you are">
-          <span class="dot"></span>
-          <select id="userSelect" aria-label="Select your name"></select>
-        </label>
-        <button class="iconbtn" id="adminBtn" title="Admin" aria-label="Open admin panel">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </button>
-      </div>
+    <div class="board-in">
+      <div class="mark">THE&nbsp;<b>LEAGUE</b></div>
+      <div class="whoami">Signed in as <b id="meName">—</b></div>
     </div>
-
-    <div class="event-row">
-      <div class="event-name" id="eventName">—</div>
-      <span class="status-pill" id="statusPill"><span class="pulse"></span><span id="statusText">—</span></span>
-    </div>
-
-    <div class="metastrip">
-      <div class="countdown" id="countdown"></div>
-      <div class="meta-right">
-        <div class="big mono" id="pCount">0</div>
-        <div class="lab">Players</div>
-      </div>
-    </div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="schedule" aria-selected="true">Schedule</button>
+      <button data-tab="leaderboard">Leaderboard</button>
+      <button data-tab="myteam">My team</button>
+      <button data-tab="admin">Admin</button>
+    </nav>
   </div>
 </header>
 
-<div class="tabbar">
-  <div class="wrap">
-    <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="leaderboard" role="tab">Leaderboard</button>
-      <button class="tab" data-tab="tips" role="tab">My Tips</button>
-      <button class="tab" data-tab="sgm" role="tab">SGM Feed <span class="badge" id="sgmCount">0</span></button>
-    </nav>
-  </div>
-</div>
+<main id="app"><div class="empty">Loading…</div></main>
+<div id="toast" class="toast" hidden></div>
 
-<div class="wrap">
-  <main>
-    <!-- LEADERBOARD -->
-    <section id="tab-leaderboard">
-      <div class="section-head">
-        <h2>Standings</h2>
-        <span class="hint">Tap a player for full slip</span>
-      </div>
-      <div id="awardsStrip"></div>
-      <div class="lb" id="lbList"></div>
-    </section>
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    <!-- TIPS -->
-    <section id="tab-tips" hidden>
-      <div class="section-head"><h2>Tip Slip</h2><span class="hint" id="tipsHint"></span></div>
-      <div id="tipsBody"></div>
-    </section>
+// ============================ CONFIG ===================================
+// Fill these two from Supabase -> Project Settings -> API.
+const SUPABASE_URL      = "YOUR_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const ADMIN_PIN         = "4242";   // change me
+const LEAGUE_LABEL = { "nba":"NBA", "nfl":"NFL", "eng.1":"EPL" };
+// =======================================================================
 
-    <!-- SGM FEED -->
-    <section id="tab-sgm" hidden>
-      <div class="section-head"><h2>Same Game Multis</h2><span class="hint">Newest first</span></div>
-      <div class="card" style="margin-bottom:16px">
-        <div class="collapse-head" id="sgmFormToggle">
-          <span class="ttl">＋ Submit an SGM</span>
-          <span class="eyebrow" id="sgmFormWho"></span>
-        </div>
-        <div class="collapse-body" id="sgmForm" hidden>
-          <div class="field"><label>Stake share URL</label><input id="sgmUrl" type="url" placeholder="https://stake.com/sports/share/…" inputmode="url"/></div>
-          <div class="field"><label>Bet description</label><input id="sgmDesc" type="text" placeholder="e.g. 4-leg City rout SGM"/></div>
-          <div class="field"><div class="row">
-            <div><label>Stake ($)</label><input id="sgmStake" type="number" min="0" step="0.01" placeholder="5.00"/></div>
-            <div><label>Odds</label><input id="sgmOdds" type="number" min="1" step="0.01" placeholder="25.00"/></div>
-          </div></div>
-          <div class="field"><label>Potential return (points if it wins)</label><input id="sgmReturn" type="number" min="0" step="0.01" placeholder="125.00"/>
-            <div class="calc-note" id="sgmCalcNote">Auto-fills to stake × odds — edit if your slip differs.</div></div>
-          <button class="btn primary block" id="sgmSubmit">Post SGM to feed</button>
-        </div>
-      </div>
-      <div id="sgmFeed"></div>
-    </section>
-  </main>
-</div>
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const app = document.getElementById("app");
+const $ = (s,r=document)=>r.querySelector(s);
 
-<div class="wrap"><div class="foot">
-  The Board · shared leaderboard powered by Supabase · admin signs in with a Supabase account.
-</div></div>
-
-<div id="modalRoot"></div>
-<div id="toast"></div>
-
-<!-- ============================= APP LOGIC ============================= -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-"use strict";
-
-/* =========================================================================
-   SUPABASE CLIENT  (the data layer)
-   The whole app reads from a single `state` object and writes through the
-   functions here. To move to another backend later, this is the only
-   region that changes.
-   ========================================================================= */
-let sb = null;
-function initClient(){
-  if(!window.supabase || !window.supabase.createClient)
-    throw new Error("The Supabase library didn't load — check the internet connection.");
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-}
-
-/* who you are on THIS device — stored locally, never in the database */
-function getLocalUser(){ try{ return localStorage.getItem("theboard.user")||null; }catch(e){ return null; } }
-function setLocalUser(id){ try{ id?localStorage.setItem("theboard.user",id):localStorage.removeItem("theboard.user"); }catch(e){} }
-
-let state = null;
-let session = { isAdmin:false };
-function uid(prefix){ return prefix + Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-3); }
-
-/* fetch every table and assemble the `state` shape the rest of the app uses */
-async function loadState(){
-  const [comp, parts, mkts, outs, subs, sgms] = await Promise.all([
-    sb.from("competition").select("*").eq("id",1).maybeSingle(),
-    sb.from("participants").select("*").order("name"),
-    sb.from("markets").select("*").order("sort_order"),
-    sb.from("outcomes").select("*").order("id"),
-    sb.from("submissions").select("*"),
-    sb.from("sgm_bets").select("*")
-  ]);
-  const err = comp.error||parts.error||mkts.error||outs.error||subs.error||sgms.error;
-  if(err) throw err;
-
-  const byMarket = {};
-  (outs.data||[]).forEach(o=>{
-    (byMarket[o.market_id] = byMarket[o.market_id]||[]).push({ id:o.id, label:o.label, points:Number(o.points) });
-  });
-  const c = comp.data;
-  state = {
-    competition: c
-      ? { name:c.name, eventName:c.event_name, startTime:c.start_time, status:c.status }
-      : { name:"", eventName:"", startTime:"", status:"Open" },
-    participants: (parts.data||[]).map(p=>({ id:p.id, name:p.name, previousRank:p.previous_rank })),
-    markets: (mkts.data||[]).map(m=>({ id:m.id, name:m.name, winningOutcomeIds:m.winning_outcome_ids, sortOrder:m.sort_order, outcomes:byMarket[m.id]||[] })),
-    submissions: (subs.data||[]).map(s=>({ participantId:s.participant_id, selections:s.selections||{}, submittedAt:Date.parse(s.submitted_at)||Date.now(), locked:s.locked })),
-    sgmBets: (sgms.data||[]).map(b=>({ id:b.id, participantId:b.participant_id, url:b.url, description:b.description, stake:Number(b.stake), odds:Number(b.odds), potentialReturn:Number(b.potential_return), status:b.status, submittedAt:Date.parse(b.submitted_at)||Date.now() })),
-    currentUserId: getLocalUser()
-  };
-}
-
-/* refetch from the server, then repaint. The single source of truth is the DB. */
-async function commit(msg){
-  try{ await loadState(); }
-  catch(e){ toast("Couldn't sync with the league","err"); return; }
-  renderAll();
-  if(msg) toast(msg);
-}
-
-/* =========================================================================
-   COMPUTE  (pure scoring — single source of truth)
-   ========================================================================= */
-function pickOf(sel){
-  if(!sel) return null;
-  if(typeof sel==="string") return { outcomeId:sel, stake:0 };
-  return { outcomeId: (sel.outcomeId!=null?sel.outcomeId:sel.o), stake: Number(sel.stake!=null?sel.stake:(sel.s||0))||0 };
-}
-function findParticipant(id){ return state.participants.find(p=>p.id===id); }
-function findMarket(id){ return state.markets.find(m=>m.id===id); }
-function findOutcome(market, oid){ return market && market.outcomes.find(o=>o.id===oid); }
-function isSettled(m){ return Array.isArray(m.winningOutcomeIds); }
-function isWinner(m, oid){ return Array.isArray(m.winningOutcomeIds) && m.winningOutcomeIds.indexOf(oid)>=0; }
-function getSubmission(pid){ return state.submissions.find(s=>s.participantId===pid) || null; }
-
-function scoreParticipant(pid){
-  let tipPoints=0, winningTips=0, losingTips=0, tipStaked=0, bestSingleWin=0, tipsBacked=0;
-  const sub = getSubmission(pid);
-  if(sub){
-    for(const m of state.markets){
-      const pk = pickOf(sub.selections[m.id]);
-      if(!pk || !pk.outcomeId || pk.stake<=0) continue;
-      tipsBacked++;
-      tipStaked += pk.stake;
-      if(!isSettled(m)) continue;
-      if(isWinner(m, pk.outcomeId)){
-        const o = findOutcome(m, pk.outcomeId);
-        const win = pk.stake * (o?Number(o.points):0);
-        tipPoints += win; winningTips++;
-        if(win>bestSingleWin) bestSingleWin=win;
-      } else { losingTips++; }
-    }
-  }
-  const mySgms = state.sgmBets.filter(b=>b.participantId===pid);
-  let sgmPoints=0, sgmWon=0, bestSgmWin=0;
-  for(const b of mySgms){ if(b.status==="won"){ const r=Number(b.potentialReturn)||0; sgmPoints+=r; sgmWon++; if(r>bestSgmWin) bestSgmWin=r; } }
-  const roi = tipStaked>0 ? (tipPoints - tipStaked)/tipStaked : null;
-  return {
-    tipPoints:round2(tipPoints), sgmPoints:round2(sgmPoints), total:round2(tipPoints+sgmPoints),
-    winningTips, losingTips, sgmCount:mySgms.length, sgmWon,
-    tipStaked:round2(tipStaked), bestSingleWin:round2(bestSingleWin), bestSgmWin:round2(bestSgmWin),
-    betsWon: winningTips+sgmWon, tipsBacked, roi
-  };
-}
-function computeStandings(){
-  const rows = state.participants.map(p=>{
-    const sc = scoreParticipant(p.id);
-    return Object.assign({ id:p.id, name:p.name, previousRank:p.previousRank }, sc);
-  });
-  rows.sort((a,b)=> b.total - a.total || a.name.localeCompare(b.name));
-  rows.forEach((r,i)=>{ r.rank=i+1; r.movement=(typeof r.previousRank==="number")?(r.previousRank-r.rank):0; });
-  return rows;
-}
-function computeAwards(){
-  const rows = computeStandings();
-  function rank(fn){
-    const arr=[];
-    for(const r of rows){ const v=fn(r); if(v==null) continue; arr.push({id:r.id,name:r.name,value:v}); }
-    arr.sort((a,b)=> b.value-a.value || a.name.localeCompare(b.name));
-    return arr;
-  }
-  return {
-    overall:       rank(r=> r.total>0 ? r.total : null),
-    highestSingle: rank(r=> r.bestSingleWin>0 ? r.bestSingleWin : null),
-    mostWon:       rank(r=> r.betsWon>0 ? r.betsWon : null),
-    highestSgm:    rank(r=> r.bestSgmWin>0 ? r.bestSgmWin : null),
-    roi:           rank(r=> (r.roi!=null && r.roi>-1) ? r.roi : null)
-  };
-}
-function renderAwards(){
-  const host=document.getElementById("awardsStrip"); if(!host) return;
-  const st=state.competition.status;
-  if(st!=="In Progress" && st!=="Completed"){ host.innerHTML=""; return; }
-  const a=computeAwards();
-  const cards=[
-    {ic:"🏆", lab:"Overall points", d:a.overall,       fmt:v=>fmtPts(v)+" pts"},
-    {ic:"🚀", lab:"Highest single", d:a.highestSingle, fmt:v=>fmtPts(v)+" pts"},
-    {ic:"🎯", lab:"Most bets won",  d:a.mostWon,       fmt:v=>v+" won"},
-    {ic:"💥", lab:"Top SGM win",    d:a.highestSgm,    fmt:v=>fmtPts(v)+" pts"},
-    {ic:"📈", lab:"Best ROI",       d:a.roi,           fmt:v=>`<span class="${v<0?'roineg':''}">${fmtRoi(v)}</span>`}
-  ].filter(c=>c.d && c.d.length);
-  if(!cards.length){ host.innerHTML=""; return; }
-  host.innerHTML = `<div class="awards">`+cards.map(c=>{
-    const lead=c.d[0];
-    const runHtml = c.d.slice(1,3).map((r,i)=>`<div class="aw-run">${i===0?'2nd':'3rd'} · ${esc(r.name)} <span class="mono">${c.fmt(r.value)}</span></div>`).join("");
-    return `<div class="award-card" data-profile="${lead.id}"><div class="aw-ic">${c.ic}</div><div class="aw-lab">${c.lab}</div><div class="aw-name">${esc(lead.name)}</div><div class="aw-val mono">${c.fmt(lead.value)}</div>${runHtml}</div>`;
-  }).join("")+`</div>`;
-}
-function round2(n){ return Math.round((Number(n)+Number.EPSILON)*100)/100; }
-function fmtPts(n){ const v=round2(n); return Number.isInteger(v)?String(v):v.toFixed(2).replace(/\.?0+$/,""); }
-function fmtRoi(roi){ if(roi==null) return "—"; return (roi>=0?"+":"")+Math.round(roi*100)+"%"; }
-function money(n){ return "$"+(round2(n)).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2}); }
-function initials(name){ return name.split(/\s+/).slice(0,2).map(s=>s[0]||"").join("").toUpperCase(); }
-function relTime(ts){
-  if(!ts) return "";
-  const d=Date.now()-ts, m=Math.floor(d/60000), h=Math.floor(d/3600000), day=Math.floor(d/86400000);
-  if(d<60000) return "just now";
-  if(m<60) return m+"m ago";
-  if(h<24) return h+"h ago";
-  if(day<7) return day+"d ago";
-  return new Date(ts).toLocaleDateString();
-}
-function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-
-let draftPicks = {};
-let tipsCat = "all";   // {marketId: outcomeId} while filling the tip form
-
-/* =========================================================================
-   RENDER
-   ========================================================================= */
-const $ = sel => document.querySelector(sel);
-const STATUS_MAP = {
-  "Open":        {cls:"status-open",   txt:"Open for tips"},
-  "Tips Locked": {cls:"status-locked", txt:"Tips locked"},
-  "In Progress": {cls:"status-live",   txt:"In progress"},
-  "Completed":   {cls:"status-done",   txt:"Completed"}
+const state = {
+  me:null, players:[], teams:[], teamsById:{}, teamsByLeague:{},
+  ownersByTeam:{}, myPicks:[], tab:"schedule",
+  onb:{ league:"nba", picked:{} }, // onboarding scratch
 };
 
-function renderHeader(){
-  $("#compName").textContent = state.competition.name;
-  $("#compTag").textContent = "The Board · Live odds comp";
-  $("#eventName").innerHTML = formatEventName(state.competition.eventName);
-  const st = STATUS_MAP[state.competition.status] || STATUS_MAP["Open"];
-  const pill = $("#statusPill");
-  pill.className = "status-pill "+st.cls;
-  $("#statusText").textContent = st.txt;
-  $("#pCount").textContent = state.participants.length;
-  $("#sgmCount").textContent = state.sgmBets.length;
-  const sel = $("#userSelect");
-  sel.innerHTML = '<option value="">Who are you?</option>' +
-    state.participants.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
-  sel.value = state.currentUserId || "";
-}
-function teamNames(){
-  const p = String(state.competition.eventName||"").split(/\s+v(?:s)?\.?\s+/i);
-  if(p.length>=2 && p[0].trim() && p[1].trim()) return [p[0].trim(), p[1].trim()];
-  return ["Team 1","Team 2"];
-}
-function templateOutcomes(tpl){
-  const t=teamNames();
-  if(tpl==="1x2") return [t[0],"Draw",t[1]];
-  if(tpl==="h2h") return [t[0],t[1]];
-  if(tpl==="ou")  return ["Over","Under"];
-  if(tpl==="yn")  return ["Yes","No"];
-  return [];
-}
-function formatEventName(name){
-  const m = String(name).split(/\s+v(?:s)?\.?\s+/i);
-  if(m.length===2) return `${esc(m[0].trim())}<span class="vs">vs</span>${esc(m[1].trim())}`;
-  return esc(name);
+function toast(msg){
+  const t=$("#toast"); t.textContent=msg; t.hidden=false;
+  clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,2600);
 }
 
-let cdTimer=null;
-function renderCountdown(){
-  const el = $("#countdown");
-  const target = new Date(state.competition.startTime).getTime();
-  function tick(){
-    const diff = target - Date.now();
-    if(isNaN(target)){ el.innerHTML = `<div class="cd-unit"><span class="cd-num">—</span><span class="cd-lab">start</span></div>`; return; }
-    if(diff<=0){ el.classList.add("done"); el.innerHTML = `<div class="cd-unit"><span class="cd-num">LIVE</span><span class="cd-lab">event underway</span></div>`; return; }
-    el.classList.remove("done");
-    const d=Math.floor(diff/86400000), h=Math.floor(diff%86400000/3600000), mn=Math.floor(diff%3600000/60000), s=Math.floor(diff%60000/1000);
-    const unit=(n,l)=>`<div class="cd-unit"><span class="cd-num">${String(n).padStart(2,"0")}</span><span class="cd-lab">${l}</span></div>`;
-    const sep=`<span class="cd-sep">:</span>`;
-    el.innerHTML = unit(d,"days")+sep+unit(h,"hrs")+sep+unit(mn,"min")+sep+unit(s,"sec");
-  }
-  tick();
-  if(cdTimer) clearInterval(cdTimer);
-  cdTimer = setInterval(tick,1000);
-}
-
-function renderLeaderboard(){
-  const rows = computeStandings();
-  const host = $("#lbList");
-  renderAwards();
-  if(!rows.length){ host.innerHTML = emptyBox("No players yet","Add participants in the admin panel."); return; }
-  host.innerHTML = rows.map(r=>{
-    const medal = r.rank<=3 ? "r"+r.rank : "";
-    const crown = r.rank===1 ? '<span class="crown">👑</span>' : "";
-    let mv;
-    if(r.movement>0) mv=`<span class="move up">▲${r.movement}</span>`;
-    else if(r.movement<0) mv=`<span class="move down">▼${Math.abs(r.movement)}</span>`;
-    else mv=`<span class="move flat">–</span>`;
-    return `<button class="lb-row ${medal}" data-profile="${r.id}">
-      ${crown}
-      <span class="lb-rank"><span class="rank-num">${r.rank}</span>${mv}</span>
-      <span class="lb-name">
-        <span class="nm">${esc(r.name)}</span>
-        <span class="chips">
-          <span class="chip">Tips ${fmtPts(r.tipPoints)}</span>
-          <span class="chip">SGM ${fmtPts(r.sgmPoints)}</span>
-          <span class="chip win">${r.winningTips}W</span>
-          <span class="chip loss">${r.losingTips}L</span>
-        </span>
-      </span>
-      <span class="lb-total"><span class="pts">${fmtPts(r.total)}</span><span class="lab">points</span></span>
-    </button>`;
-  }).join("");
-}
-
-function draftStaked(){ let s=0; for(const k in draftPicks){ const pk=pickOf(draftPicks[k]); if(pk && pk.stake>0) s+=pk.stake; } return round2(s); }
-function bankrollInner(remain){
-  const pct=Math.max(0,Math.min(100, remain/STARTING_BANKROLL*100));
-  return `<div class="bk-top"><span>Balance</span><b class="mono ${remain<0?'over':''}">$${fmtPts(remain)}</b><span class="bk-of">of $${STARTING_BANKROLL}</span></div><div class="bk-bar"><span style="width:${pct}%"></span></div>`;
-}
-function updateStakeUI(changedMid){
-  if(changedMid){
-    const m=findMarket(changedMid); const pk=pickOf(draftPicks[changedMid]);
-    const o=(pk&&pk.outcomeId)?findOutcome(m,pk.outcomeId):null;
-    const el=document.querySelector('[data-towin="'+changedMid+'"]');
-    if(el) el.textContent=(o&&pk.stake>0)?fmtPts(pk.stake*Number(o.points)):"—";
-  }
-  const remain=STARTING_BANKROLL-draftStaked();
-  const bar=document.getElementById("bankrollBar"); if(bar) bar.innerHTML=bankrollInner(remain);
-  const btn=document.getElementById("submitTips"); if(btn) btn.disabled=remain<0;
-}
-function identityPrompt(){
-  const opts = state.participants.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
-  return `<div class="idprompt">
-    <div class="idp-emoji">👋</div>
-    <h3>Who are you?</h3>
-    <p>Pick your name so we know whose slip this is — you'll only do this once on this device.</p>
-    <select id="idpSelect"><option value="">Select your name…</option>${opts}</select>
-    <button class="btn primary block" id="idpConfirm">That's me</button>
-    <p class="idp-note">You can change it any time from the selector at the top right.</p>
-  </div>`;
-}
-function renderTips(){
-  const body = $("#tipsBody");
-  const hint = $("#tipsHint");
-  const pid = state.currentUserId;
-  if(!pid){ hint.textContent=""; body.innerHTML = identityPrompt(); return; }
-  const me = findParticipant(pid);
-  const sub = getSubmission(pid);
-  const compOpen = state.competition.status === "Open";
-  hint.textContent = me ? me.name : "";
-
-  if(sub){
-    const sc = scoreParticipant(pid);
-    const betMarkets = state.markets.filter(m=>{ const pk=pickOf(sub.selections[m.id]); return pk && pk.outcomeId; });
-    let html = `<div class="notice lock"><span class="ic">🔒</span><div><strong>Your tips are locked.</strong> $${fmtPts(sc.tipStaked)} staked across ${betMarkets.length} tip${betMarkets.length===1?'':'s'}, submitted ${relTime(sub.submittedAt)}. ${anySettled()?`Banked <b class="mono">${fmtPts(sc.tipPoints)}</b> pts so far.`:`Results pending.`}</div></div>`;
-    html += betMarkets.map(m=>renderMarketReadonly(m, sub.selections[m.id])).join("");
-    body.innerHTML = html; return;
-  }
-  if(!compOpen){
-    body.innerHTML = `<div class="notice warn"><span class="ic">⏳</span><div><strong>Tips are closed.</strong> The competition status is "${esc(state.competition.status)}" so new slips can't be submitted.</div></div>`;
+// ---------------------------- boot -------------------------------------
+async function boot(){
+  if (SUPABASE_URL.startsWith("YOUR_")){
+    app.innerHTML = `<div class="empty"><b>Add your Supabase keys</b>
+      Open index.html and set SUPABASE_URL and SUPABASE_ANON_KEY near the top.</div>`;
     return;
   }
-  const remain = STARTING_BANKROLL - draftStaked();
-  let html = `<div class="notice"><span class="ic">✏️</span><div>You've got <b>$${STARTING_BANKROLL}</b> to spread across your tips. Back an outcome, set a stake — a winner pays <b>stake × price</b> in points. <b>One submission only.</b></div></div>`;
-  html += `<div class="bankroll" id="bankrollBar">${bankrollInner(remain)}</div>`;
-  const _cats=[["all","All"],["goals","Goals"],["corners","Corners"],["cards","Cards"]];
-  html += `<div class="tipcats">`+_cats.map(c=>`<button data-tipscat="${c[0]}" class="${tipsCat===c[0]?'active':''}">${c[1]}</button>`).join("")+`</div>`;
-  const _shown=state.markets.filter(m=> tipsCat==="all" ? true : marketCat(m)===tipsCat);
-  html += _shown.length ? _shown.map(m=>renderMarketForm(m)).join("") : `<div class="empty"><strong>No markets here</strong>Nothing in this group — check the other tabs.</div>`;
-  html += `<button class="btn primary block" id="submitTips" style="margin-top:4px"${remain<0?' disabled':''}>Lock in my tips</button>`;
-  body.innerHTML = html;
-}
-function anySettled(){ return state.markets.some(m=>isSettled(m)); }
+  const [{data:teams,error:te},{data:players,error:pe}] = await Promise.all([
+    sb.from("lb_teams").select("*").order("name"),
+    sb.from("lb_players").select("*").order("name"),
+  ]);
+  if (te||pe){ app.innerHTML=`<div class="empty"><b>Couldn’t reach the database</b>
+    ${(te||pe).message}</div>`; return; }
 
-function marketCat(m){
-  const n=(m.name||"").toLowerCase();
-  if(n.indexOf("goal")>=0) return "goals";
-  if(n.indexOf("corner")>=0) return "corners";
-  if(n.indexOf("card")>=0 || n.indexOf("booking")>=0) return "cards";
-  return "other";
+  state.teams = teams;
+  state.players = players;
+  state.teamsById = Object.fromEntries(teams.map(t=>[t.id,t]));
+  state.teamsByLeague = {};
+  for (const t of teams){ (state.teamsByLeague[t.league] ||= []).push(t); }
+
+  await loadOwners();
+
+  const saved = localStorage.getItem("lb_player");
+  state.me = state.players.find(p=>p.name===saved) || null;
+
+  if (!state.me) return renderGate();
+  await afterIdentity();
 }
-function renderMarketForm(m){
-  const pk = pickOf(draftPicks[m.id]) || {};
-  const outs = m.outcomes.map(o=>{
-    const sel = pk.outcomeId===o.id ? " sel" : "";
-    return `<button class="outcome${sel}" data-pick="${m.id}:${o.id}" type="button"><span class="ol">${esc(o.label)}</span><span class="odds">${fmtPts(o.points)}</span></button>`;
-  }).join("");
-  const hasPick = !!pk.outcomeId;
-  const o = hasPick ? findOutcome(m, pk.outcomeId) : null;
-  const toWin = (o && pk.stake>0) ? fmtPts(pk.stake*Number(o.points)) : "—";
-  const quick = [5,10,50,100].map(a=>`<button type="button" class="qbtn" data-addstake="${m.id}:${a}">$${a}</button>`).join("")
-    + `<button type="button" class="qbtn clr" data-clearstake="${m.id}">Clear</button>`;
-  return `<div class="card market" data-market="${m.id}">
-    <div class="market-head"><span class="mname">${esc(m.name)}</span><span class="market-state">${hasPick?'Set your stake':'Choose one'}</span></div>
-    <div class="outcomes">${outs}</div>
-    <div class="stake-row" ${hasPick?'':'hidden'}>
-      <div class="stake-main">
-        <div class="stake-input"><span>$</span><input type="number" inputmode="decimal" min="0" step="1" data-stake="${m.id}" value="${pk.stake>0?pk.stake:''}" placeholder="0"/></div>
-        <span class="to-win">to win <b data-towin="${m.id}">${toWin}</b></span>
+
+async function loadOwners(){
+  const { data } = await sb.from("lb_picks").select("team_id, player:lb_players(name)");
+  state.ownersByTeam = {};
+  for (const row of (data||[])){
+    (state.ownersByTeam[row.team_id] ||= []).push(row.player.name);
+  }
+}
+
+async function afterIdentity(){
+  $("#meName").textContent = state.me.name;
+  const { data } = await sb.from("lb_picks")
+    .select("*, team:lb_teams(*)").eq("player_id", state.me.id);
+  state.myPicks = data||[];
+  if (state.myPicks.length < 3){ document.getElementById("topbar").hidden=true; return renderOnboarding(); }
+  document.getElementById("topbar").hidden=false;
+  render();
+}
+
+// ---------------------------- identity gate ----------------------------
+function renderGate(){
+  document.getElementById("topbar").hidden=true;
+  app.innerHTML = `
+    <div class="center"><div class="sheet">
+      <h2>Who are you?</h2>
+      <p class="sub">Pick your name to get started. This is remembered on this device.</p>
+      <label class="fld" for="whoSel">Your name</label>
+      <select id="whoSel">
+        <option value="" disabled selected>Select your name…</option>
+        ${state.players.map(p=>`<option value="${p.id}">${p.name}</option>`).join("")}
+      </select>
+      <div style="height:16px"></div>
+      <button class="btn" id="whoGo" disabled style="width:100%">That’s me</button>
+    </div></div>`;
+  $("#whoSel").onchange = e => $("#whoGo").disabled = !e.target.value;
+  $("#whoGo").onclick = async () => {
+    const id = Number($("#whoSel").value);
+    state.me = state.players.find(p=>p.id===id);
+    localStorage.setItem("lb_player", state.me.name);
+    await afterIdentity();
+  };
+}
+
+// ---------------------------- onboarding --------------------------------
+function randomTeam(league){
+  const list = state.teamsByLeague[league]||[];
+  return list[Math.floor(Math.random()*list.length)];
+}
+function rollRemaining(chosenLeague){
+  // fill the two leagues the player did NOT choose, at random
+  state.onb.picked = {};
+  for (const lg of Object.keys(LEAGUE_LABEL)){
+    if (lg===chosenLeague) continue;
+    state.onb.picked[lg] = randomTeam(lg);
+  }
+}
+function rollAll(){
+  state.onb.picked = {};
+  for (const lg of Object.keys(LEAGUE_LABEL)) state.onb.picked[lg] = randomTeam(lg);
+}
+
+function renderOnboarding(){
+  const chosen = state.onb.league;
+  app.innerHTML = `
+    <div class="center"><div class="sheet">
+      <h2>Draft your teams</h2>
+      <p class="sub">One team in each of the three leagues. Pick one yourself and we’ll
+        randomise the rest — or randomise all three. Picks lock permanently.</p>
+
+      <label class="fld">Pick one — choose the league</label>
+      <div class="segmented" id="lgSeg">
+        ${Object.entries(LEAGUE_LABEL).map(([k,v])=>
+          `<button data-lg="${k}" aria-pressed="${k===chosen}">${v}</button>`).join("")}
       </div>
-      <div class="quick">${quick}</div>
+      <div style="height:10px"></div>
+      <select id="teamSel">
+        <option value="" disabled selected>Select a ${LEAGUE_LABEL[chosen]} team…</option>
+        ${(state.teamsByLeague[chosen]||[]).map(t=>`<option value="${t.id}">${t.name}</option>`).join("")}
+      </select>
+      <div style="height:12px"></div>
+      <button class="btn ghost" id="pickOne" style="width:100%" disabled>Pick this + randomise the other two</button>
+
+      <div class="divider">or</div>
+      <button class="btn gold" id="rollAll" style="width:100%">🎲 Randomise all three</button>
+
+      <div id="preview"></div>
+    </div></div>`;
+
+  $("#lgSeg").querySelectorAll("button").forEach(b=>{
+    b.onclick = () => { state.onb.league=b.dataset.lg; state.onb.picked={}; renderOnboarding(); };
+  });
+  $("#teamSel").onchange = e => $("#pickOne").disabled = !e.target.value;
+  $("#pickOne").onclick = () => {
+    const t = state.teamsById[Number($("#teamSel").value)];
+    rollRemaining(chosen);
+    state.onb.picked[chosen] = t;      // chosen one flagged separately at save
+    state.onb.chosenLeague = chosen;
+    drawPreview();
+  };
+  $("#rollAll").onclick = () => { rollAll(); state.onb.chosenLeague=null; drawPreview(); };
+}
+
+function slot(lg){
+  const t = state.onb.picked[lg];
+  if (!t) return `<div class="slot empty-slot">—</div>`;
+  return `<div class="slot"><div class="lg">${LEAGUE_LABEL[lg]}</div>
+    ${t.logo_url?`<img src="${t.logo_url}" alt="">`:""}
+    <div class="nm">${t.short_name||t.name}</div></div>`;
+}
+function drawPreview(){
+  const done = Object.keys(state.onb.picked).length===3;
+  $("#preview").innerHTML = `
+    <div class="roll">${Object.keys(LEAGUE_LABEL).map(slot).join("")}</div>
+    ${done?`
+      <button class="btn" id="lockIn" style="width:100%">Lock in my teams</button>
+      <p class="warn">⚠ Locked for the season — only an admin can reset your picks.</p>`:""}`;
+  if (done) $("#lockIn").onclick = lockIn;
+}
+
+async function lockIn(){
+  const rows = Object.entries(state.onb.picked).map(([lg,t])=>({
+    player_id: state.me.id, league: lg, team_id: t.id,
+    method: (lg===state.onb.chosenLeague) ? "chosen" : "random",
+  }));
+  const btn = $("#lockIn"); btn.disabled=true; btn.textContent="Locking…";
+  const { error } = await sb.from("lb_picks").insert(rows);
+  if (error){ toast(error.message); btn.disabled=false; btn.textContent="Lock in my teams"; return; }
+  await loadOwners();
+  await afterIdentity();
+  toast("Teams locked. Good luck.");
+}
+
+// ---------------------------- main render -------------------------------
+function render(){
+  document.querySelectorAll("#tabs button").forEach(b=>
+    b.setAttribute("aria-selected", String(b.dataset.tab===state.tab)));
+  if (state.tab==="schedule")     renderSchedule();
+  else if (state.tab==="leaderboard") renderLeaderboard();
+  else if (state.tab==="myteam")  renderMyTeam();
+  else if (state.tab==="admin")   renderAdmin();
+}
+document.getElementById("tabs").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  state.tab = b.dataset.tab; render();
+});
+
+// ---- schedule ----
+const sched = { range:"day", league:"all" };
+function windowRange(){
+  const now = new Date();
+  const start = new Date(now); start.setHours(0,0,0,0);
+  const end = new Date(start);
+  if (sched.range==="day") end.setDate(end.getDate()+1);
+  else end.setDate(end.getDate()+7);
+  return { start, end };
+}
+async function renderSchedule(){
+  app.innerHTML = `
+    <p class="eyebrow">Fixtures &amp; results</p>
+    <div class="filters">
+      <div class="segmented" id="rangeSeg">
+        <button data-r="day"  aria-pressed="${sched.range==='day'}">Today</button>
+        <button data-r="week" aria-pressed="${sched.range==='week'}">Next 7 days</button>
+      </div>
+      <div class="segmented" id="lgSeg2">
+        ${["all",...Object.keys(LEAGUE_LABEL)].map(k=>
+          `<button data-l="${k}" aria-pressed="${sched.league===k}">${k==='all'?'All':LEAGUE_LABEL[k]}</button>`).join("")}
+      </div>
     </div>
+    <div id="games"><div class="empty">Loading fixtures…</div></div>`;
+  $("#rangeSeg").onclick = e=>{const b=e.target.closest("button"); if(b){sched.range=b.dataset.r; renderSchedule();}};
+  $("#lgSeg2").onclick  = e=>{const b=e.target.closest("button"); if(b){sched.league=b.dataset.l; renderSchedule();}};
+
+  const { start, end } = windowRange();
+  let q = sb.from("lb_games").select("*")
+    .gte("starts_at", start.toISOString()).lt("starts_at", end.toISOString())
+    .order("starts_at");
+  if (sched.league!=="all") q = q.eq("league", sched.league);
+  const { data:games, error } = await q;
+
+  const box = $("#games");
+  if (error){ box.innerHTML=`<div class="empty">${error.message}</div>`; return; }
+  if (!games || !games.length){
+    box.innerHTML = `<div class="empty"><b>No fixtures in this window</b>
+      When the season’s on, games appear here automatically once the sync runs.</div>`;
+    return;
+  }
+  // group by local date
+  const byDay = {};
+  for (const g of games){
+    const d = new Date(g.starts_at).toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"});
+    (byDay[d] ||= []).push(g);
+  }
+  box.innerHTML = Object.entries(byDay).map(([day,gs])=>`
+    <div class="day-label">${day}</div>
+    ${gs.map(gameCard).join("")}`).join("");
+}
+function ownersLine(teamId){
+  const names = state.ownersByTeam[teamId]||[];
+  if (!names.length) return `<div class="owners none">no owner</div>`;
+  return `<div class="owners">${names.join(" · ")}</div>`;
+}
+function sideRow(g, teamId, score){
+  const t = state.teamsById[teamId];
+  const won = g.status==="final" && g.winner_team_id===teamId;
+  const nm = t ? (t.name) : "TBD";
+  return `<div class="side ${won?'won':''}">
+    ${t&&t.logo_url?`<img src="${t.logo_url}" alt="">`:`<div style="width:30px"></div>`}
+    <div class="tn"><div class="team">${nm}</div>${ownersLine(teamId)}</div>
+    ${g.status!=="scheduled"&&score!=null?`<div class="sc tnum">${score}</div>`:""}
   </div>`;
 }
-function renderMarketReadonly(m, sel){
-  const pk = pickOf(sel);
-  const settled = isSettled(m);
-  const outs = m.outcomes.map(o=>{
-    const isPick = pk && pk.outcomeId===o.id;
-    const isWin = isWinner(m, o.id);
-    let cls="outcome"; if(isPick) cls+=" sel";
-    if(settled){ if(isWin) cls+=" won"; else cls+=" lost"; }
-    return `<button class="${cls}" disabled type="button"><span class="ol">${esc(o.label)}</span><span class="odds">${fmtPts(o.points)}</span></button>`;
-  }).join("");
-  let tag='<span class="market-state">Pending</span>';
-  if(pk && pk.outcomeId){
-    if(settled){
-      const po=findOutcome(m,pk.outcomeId);
-      tag = isWinner(m, pk.outcomeId)
-        ? `<span class="result-tag won">Won +${fmtPts(pk.stake*(po?Number(po.points):0))}</span>`
-        : `<span class="result-tag lost">Lost $${fmtPts(pk.stake)}</span>`;
-    } else { tag = `<span class="market-state">$${fmtPts(pk.stake)} on</span>`; }
-  } else if(settled){ tag='<span class="market-state settled">Settled</span>'; }
-  return `<div class="card market"><div class="market-head"><span class="mname">${esc(m.name)}</span>${tag}</div><div class="outcomes">${outs}</div></div>`;
+function gameCard(g){
+  const derby = (state.ownersByTeam[g.home_team_id]?.length) && (state.ownersByTeam[g.away_team_id]?.length);
+  const fav = g.favorite_team_id ? state.teamsById[g.favorite_team_id] : null;
+  const time = new Date(g.starts_at).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+  const status = g.status==="final" ? (g.is_draw?"Draw":"Final")
+               : g.status==="in" ? "Live" : time;
+  return `<div class="game ${derby?'derby':''}">
+    ${derby?`<div class="derby-flag">Colleague derby</div>`:""}
+    ${sideRow(g, g.away_team_id, g.away_score)}
+    ${sideRow(g, g.home_team_id, g.home_score)}
+    <div class="meta"><span>${LEAGUE_LABEL[g.league]||g.league} · ${status}</span>
+      ${fav?`<span class="tag-fav">Favourite: ${fav.short_name||fav.name}</span>`:``}</div>
+  </div>`;
 }
 
-function renderSGM(){
-  const who = $("#sgmFormWho");
-  who.textContent = state.currentUserId ? "as "+findParticipant(state.currentUserId).name : "pick your name first";
-  const feed = $("#sgmFeed");
-  const bets = [...state.sgmBets].filter(b=>b.status!=="won" && b.status!=="lost").sort((a,b)=>(b.submittedAt||0)-(a.submittedAt||0));
-  if(!bets.length){ feed.innerHTML = emptyBox(state.sgmBets.length?"No live SGMs":"No SGMs yet", state.sgmBets.length?"Settled SGMs are cleared from the feed.":"Be the first to post an SGM."); return; }
-  feed.innerHTML = bets.map(b=>{
-    const p = findParticipant(b.participantId);
-    const name = p ? p.name : "Unknown";
-    const award = b.status==="won" ? `<span class="award">+${fmtPts(b.potentialReturn)} pts banked</span>` : "";
-    return `<div class="slip">
-      <div class="slip-head">
-        <div class="slip-user">
-          <div class="avatar">${esc(initials(name))}</div>
-          <div class="u-meta"><div class="u-name">${esc(name)}</div><div class="u-time">${relTime(b.submittedAt)}</div></div>
-        </div>
-        <span class="slip-status ${b.status}">${b.status}</span>
-      </div>
-      <div class="slip-desc">${esc(b.description||"Same Game Multi")}</div>
-      <div class="slip-grid">
-        <div class="slip-cell"><div class="l">Stake</div><div class="v">${money(b.stake)}</div></div>
-        <div class="slip-cell"><div class="l">Odds</div><div class="v">${fmtPts(b.odds)}</div></div>
-        <div class="slip-cell ret"><div class="l">Return</div><div class="v">${fmtPts(b.potentialReturn)}</div></div>
-      </div>
-      <div class="slip-foot">
-        ${b.url?`<a class="slip-link" href="${esc(b.url)}" target="_blank" rel="noopener">🔗 View slip on Stake</a>`:`<span class="slip-link">No link</span>`}
-        ${award}
-      </div>
-    </div>`;
-  }).join("");
-}
-
-function emptyBox(title,sub){ return `<div class="empty"><strong>${esc(title)}</strong>${esc(sub)}</div>`; }
-function renderAll(){ renderHeader(); renderLeaderboard(); renderTips(); renderSGM(); }
-
-/* =========================================================================
-   PROFILE MODAL
-   ========================================================================= */
-function openProfile(pid){
-  const p = findParticipant(pid); if(!p) return;
-  const sc = scoreParticipant(pid);
-  const standings = computeStandings();
-  const rank = standings.find(r=>r.id===pid).rank;
-  const sub = getSubmission(pid);
-
-  let tipsHtml;
-  if(sub){
-    tipsHtml = state.markets.map(m=>{
-      const pk = pickOf(sub.selections[m.id]);
-      if(!pk || !pk.outcomeId) return "";
-      const o = findOutcome(m,pk.outcomeId);
-      if(!o) return "";
-      const settled = isSettled(m);
-      let cls="pending", pv, note="Pending";
-      if(settled){
-        if(isWinner(m, pk.outcomeId)){ cls="won"; pv="+"+fmtPts(pk.stake*Number(o.points)); note="Won"; }
-        else { cls="lost"; pv="0"; note="Lost"; }
-      } else { pv=fmtPts(pk.stake*Number(o.points)); }
-      return `<div class="pick-row ${cls}"><div class="pk"><div class="mk">${esc(m.name)} · $${fmtPts(pk.stake)} @ ${fmtPts(o.points)} · ${note}</div><div class="ch">${esc(o.label)}</div></div><div class="pv">${pv}</div></div>`;
-    }).join("") || `<div class="empty"><strong>No tips backed</strong>This slip is empty.</div>`;
-  } else {
-    tipsHtml = `<div class="empty"><strong>No tip slip submitted</strong>${esc(p.name)} hasn't locked in tips.</div>`;
+// ---- leaderboard ----
+async function renderLeaderboard(){
+  app.innerHTML = `<p class="eyebrow">Standings</p><div id="lbbox"><div class="empty">Loading…</div></div>`;
+  const { data, error } = await sb.from("lb_leaderboard").select("*");
+  const box=$("#lbbox");
+  if (error){ box.innerHTML=`<div class="empty">${error.message}</div>`; return; }
+  const rows = (data||[]);
+  const anyPoints = rows.some(r=>Number(r.points)>0);
+  if (!anyPoints){
+    box.innerHTML = `<div class="empty"><b>No points on the board yet</b>
+      Everyone starts level. Points land automatically as owned teams win.</div>`;
+    return;
   }
+  box.innerHTML = `<table class="lb"><thead><tr>
+      <th>#</th><th>Player</th><th>Wins</th><th>Upsets</th><th>Pts</th>
+    </tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr class="${r.player===state.me.name?'me':''}">
+      <td class="rank tnum">${i+1}</td>
+      <td>${r.player}</td>
+      <td class="tnum">${r.wins}</td>
+      <td class="tnum up">${r.upsets}</td>
+      <td class="pts tnum">${Number(r.points)}</td>
+    </tr>`).join("")}
+    </tbody></table>`;
+}
 
-  const mySgms = [...state.sgmBets].filter(b=>b.participantId===pid).sort((a,b)=>(b.submittedAt||0)-(a.submittedAt||0));
-  const sgmHtml = mySgms.length ? mySgms.map(b=>{
-    const cls = b.status, pv = b.status==="won"?`+${fmtPts(b.potentialReturn)}`:(b.status==="lost"?"0":fmtPts(b.potentialReturn));
-    return `<div class="pick-row ${cls}"><div class="pk"><div class="mk">${money(b.stake)} @ ${fmtPts(b.odds)} · ${b.status}</div><div class="ch">${esc(b.description||"SGM")}</div></div><div class="pv">${pv}</div></div>`;
-  }).join("") : `<div class="empty"><strong>No SGMs yet</strong>${esc(p.name)} hasn't posted any SGMs.</div>`;
-
-  const medal = rank<=3 ? ["🥇","🥈","🥉"][rank-1] : "";
-  modal(`${medal} ${esc(p.name)}`, `Currently ranked #${rank} of ${state.participants.length}`, `
-    <div class="psum">
-      <div class="c tot"><div class="v">${fmtPts(sc.total)}</div><div class="l">Total</div></div>
-      <div class="c"><div class="v">${fmtPts(sc.tipPoints)}</div><div class="l">Tip pts</div></div>
-      <div class="c"><div class="v">${fmtPts(sc.sgmPoints)}</div><div class="l">SGM pts</div></div>
-      <div class="c"><div class="v">#${rank}</div><div class="l">Rank</div></div>
+// ---- my team ----
+function renderMyTeam(){
+  const byLeague = Object.fromEntries(state.myPicks.map(p=>[p.league,p]));
+  app.innerHTML = `<p class="eyebrow">My team</p>
+    <div class="myteam">
+    ${Object.keys(LEAGUE_LABEL).map(lg=>{
+      const p = byLeague[lg]; const t = p?.team;
+      return `<div class="card">
+        ${t?.logo_url?`<img src="${t.logo_url}" alt="">`:`<div style="width:44px"></div>`}
+        <div><div class="lg">${LEAGUE_LABEL[lg]}</div>
+        <div class="nm">${t?t.name:"—"}</div></div></div>`;
+    }).join("")}
     </div>
-    <div class="detail-h">Tips · ${sc.winningTips}W ${sc.losingTips}L · $${fmtPts(sc.tipStaked)} staked · ROI <span class="${sc.roi!=null&&sc.roi<0?'roineg':''}">${fmtRoi(sc.roi)}</span></div>
-    ${tipsHtml}
-    <div class="detail-h">Same Game Multis · ${sc.sgmCount}</div>
-    ${sgmHtml}
-  `);
+    <p class="warn" style="text-align:left">Locked for the season. Ask an admin if you need a reset.</p>`;
 }
 
-/* =========================================================================
-   ADMIN PANEL  (admin = a signed-in Supabase user)
-   ========================================================================= */
-function openAdmin(){ if(!session.isAdmin){ openAdminLogin(); return; } renderAdminPanel(); }
-
-function openAdminLogin(){
-  modal("Admin sign in","Use the Supabase account you created.", `
-    <div class="field"><label>Email</label><input id="admEmail" type="email" autocomplete="username" placeholder="you@example.com"/></div>
-    <div class="field"><label>Password</label><input id="admPw" type="password" autocomplete="current-password" placeholder="••••••••"/></div>
-    <button class="btn primary block" id="admLoginBtn">Sign in</button>
-    <p class="calc-note" style="margin-top:10px">This is the user you added under Authentication → Users in Supabase.</p>
-  `);
-  const em=$("#admEmail"); em && em.focus();
-  $("#admLoginBtn").addEventListener("click", tryLogin);
-  $("#admPw").addEventListener("keydown", e=>{ if(e.key==="Enter") tryLogin(); });
-  async function tryLogin(){
-    const email=($("#admEmail").value||"").trim(); const password=$("#admPw").value||"";
-    if(!email||!password) return toast("Enter email and password","err");
-    const { error } = await sb.auth.signInWithPassword({ email, password });
-    if(error){ toast("Sign in failed: "+error.message,"err"); return; }
-    session.isAdmin = true; toast("Admin unlocked"); renderAdminPanel();
+// ---- admin ----
+let adminOK=false;
+function renderAdmin(){
+  if (!adminOK){
+    app.innerHTML = `<p class="eyebrow">Admin</p>
+      <div class="sheet" style="max-width:360px">
+        <label class="fld" for="pin">Enter admin PIN</label>
+        <input id="pin" type="password" inputmode="numeric"
+          style="background:var(--panel2);color:var(--chalk);border:1px solid var(--line);border-radius:9px;padding:11px 12px;width:100%;font-size:15px"/>
+        <div style="height:12px"></div>
+        <button class="btn" id="pinGo" style="width:100%">Unlock</button>
+      </div>`;
+    $("#pinGo").onclick = ()=>{ if($("#pin").value===ADMIN_PIN){adminOK=true; renderAdmin();} else toast("Wrong PIN"); };
+    return;
   }
+  app.innerHTML = `<p class="eyebrow">Admin · reset picks</p>
+    <div id="adminList"><div class="empty">Loading…</div></div>`;
+  drawAdminList();
 }
-
-let mktQuery="";
-let mktFilter="all";
-function applyMarketFilter(){
-  const q=mktQuery.trim().toLowerCase();
-  document.querySelectorAll(".adm-market").forEach(c=>{
-    const okQ = !q || (c.dataset.mname||"").indexOf(q)>=0;
-    const settled = c.dataset.settled==="1";
-    const okF = mktFilter==="all" || (mktFilter==="settled"?settled:!settled);
-    c.style.display = (okQ && okF) ? "" : "none";
-  });
-}
-function filterMarkets(v){ mktQuery=v; applyMarketFilter(); }
-let adminTab = "competition";
-function renderAdminPanel(){
-  const c = state.competition;
-  const _tn = teamNames();
-  const tplSel = `<select data-add="newMarketTpl" class="tpl-sel">`+
-    [["1x2","Match result — "+_tn[0]+" / Draw / "+_tn[1]],
-     ["h2h","Head-to-head — "+_tn[0]+" / "+_tn[1]],
-     ["ou","Over / Under"],["yn","Yes / No"],["custom","Custom (no outcomes)"]]
-    .map(o=>`<option value="${o[0]}">${esc(o[1])}</option>`).join("")+`</select>`;
-  const statuses = ["Open","Tips Locked","In Progress","Completed"];
-  const statusBtns = statuses.map(s=>`<button class="btn sm ${s===c.status?'primary':''}" data-adm="status" data-val="${s}">${s}</button>`).join("");
-
-  const participantList = state.participants.map(p=>`
-    <div class="list-item"><span>${esc(p.name)}</span><button class="btn sm danger" data-adm="rmUser" data-val="${p.id}">Remove</button></div>`).join("")
-    || `<div class="calc-note">No participants.</div>`;
-
-  const marketsHtml = [...state.markets].reverse().map(m=>{
-    const outs = m.outcomes.map(o=>{
-      const isWin = isWinner(m, o.id);
-      return `<div class="adm-out"><input class="labedit" type="text" data-editlabel="${o.id}" value="${esc(o.label)}" title="Outcome name"/>
-        <input class="ptsedit" type="number" step="0.01" min="0" data-editout="${o.id}" value="${o.points}" title="Price (decimal odds)"/>
-        <button class="btn sm ${isWin?'primary':''}" data-adm="toggleWin" data-val="${m.id}:${o.id}">${isWin?'✓ Won':'Win'}</button>
-        <button class="btn sm danger" data-adm="rmOut" data-val="${m.id}:${o.id}">✕</button></div>`;
-    }).join("");
-    const _search=(m.name+" "+m.outcomes.map(o=>o.label).join(" ")).toLowerCase();
-    return `<div class="adm-market" data-mname="${esc(_search)}" data-settled="${isSettled(m)?'1':'0'}">
-      <div class="list-item" style="padding-top:0"><strong>${esc(m.name)} ${isSettled(m)?`<span class="winmark">settled${m.winningOutcomeIds.length>1?' · '+m.winningOutcomeIds.length:''}</span>`:''}</strong>
-        <span>${isSettled(m)?`<button class="btn sm" data-adm="clearWin" data-val="${m.id}">Unsettle</button>`:''}
-        <button class="btn sm danger" data-adm="rmMarket" data-val="${m.id}">Delete</button></span></div>
-      ${outs}
-      <div class="inline-add"><input placeholder="Outcome label" data-add="outLabel:${m.id}"/><input placeholder="Price" type="number" step="0.01" style="max-width:84px" data-add="outPts:${m.id}"/><button class="btn sm" data-adm="addOut" data-val="${m.id}">Add</button></div>
+async function drawAdminList(){
+  const { data } = await sb.from("lb_players")
+    .select("id,name, picks:lb_picks(league, team:lb_teams(short_name,name))").order("name");
+  $("#adminList").innerHTML = (data||[]).map(p=>{
+    const picks = (p.picks||[]).map(x=>`${LEAGUE_LABEL[x.league]||x.league}: ${x.team?.short_name||x.team?.name||'—'}`).join(" · ");
+    const has = (p.picks||[]).length>0;
+    return `<div class="card" style="justify-content:space-between">
+      <div><div class="nm" style="font-size:18px">${p.name}</div>
+        <div class="owners" style="color:var(--muted);font-size:12.5px">${has?picks:"no picks yet"}</div></div>
+      ${has?`<button class="btn ghost" data-reset="${p.id}">Reset picks</button>`:""}
     </div>`;
-  }).join("") || `<div class="calc-note">No markets yet.</div>`;
-
-  const sgmAdmin = state.sgmBets.length ? [...state.sgmBets].sort((a,b)=>(b.submittedAt||0)-(a.submittedAt||0)).map(b=>{
-    const p=findParticipant(b.participantId); const nm=p?p.name:"?";
-    return `<div class="list-item"><span style="min-width:0"><b>${esc(nm)}</b> — ${esc(b.description||"SGM")} <span class="mono" style="color:var(--muted)">(${fmtPts(b.potentialReturn)})</span></span>
-      <span style="flex:none;display:flex;gap:5px">
-        <button class="btn sm ${b.status==='won'?'primary':''}" data-adm="sgmStatus" data-val="${b.id}:won">W</button>
-        <button class="btn sm ${b.status==='lost'?'danger':''}" data-adm="sgmStatus" data-val="${b.id}:lost">L</button>
-        <button class="btn sm" data-adm="sgmStatus" data-val="${b.id}:pending">P</button></span></div>`;
-  }).join("") : `<div class="calc-note">No SGMs submitted.</div>`;
-
-  const nSettled=state.markets.filter(m=>isSettled(m)).length;
-  const nUnsettled=state.markets.length-nSettled;
-  const sections = {
-    competition: `<div class="admin-card">
-      <div class="field"><label>Competition name</label><input data-edit="comp.name" value="${esc(c.name)}"/></div>
-      <div class="field"><label>Event</label><input data-edit="comp.eventName" value="${esc(c.eventName)}"/></div>
-      <div class="field"><label>Start time</label><input data-edit="comp.startTime" type="datetime-local" value="${toLocalInput(c.startTime)}"/></div>
-      <label class="eyebrow" style="display:block;margin-bottom:7px">Status</label>
-      <div class="btn-grid">${statusBtns}</div>
-      <div style="margin-top:10px"><button class="btn sm block" data-adm="lockAll">🔒 Lock all tips (set status to Tips Locked)</button></div>
-    </div>`,
-    players: `<div class="admin-card">
-      ${participantList}
-      <div class="inline-add"><input placeholder="New player name" data-add="newUser"/><button class="btn sm" data-adm="addUser">Add</button></div>
-    </div>`,
-    markets: `<div class="admin-card">
-      <div class="inline-add" style="flex-wrap:wrap">
-        <div class="eyebrow" style="flex:1 1 100%">Add a market</div>
-        <input placeholder="Market name (e.g. Total Goals)" data-add="newMarket" style="flex:1 1 100%"/>
-        ${tplSel}
-        <button class="btn sm primary" data-adm="addMarket">Add</button>
-      </div>
-      <div style="height:1px;background:var(--line-soft);margin:16px 0 12px"></div>
-      <input id="mktSearch" class="mkt-search" placeholder="Search markets to settle…" autocomplete="off" value="${esc(mktQuery)}"/>
-      <div class="mktfilter">
-        <button data-mktfilter="all" class="${mktFilter==='all'?'active':''}">All ${state.markets.length}</button>
-        <button data-mktfilter="unsettled" class="${mktFilter==='unsettled'?'active':''}">To settle ${nUnsettled}</button>
-        <button data-mktfilter="settled" class="${mktFilter==='settled'?'active':''}">Settled ${nSettled}</button>
-      </div>
-      ${marketsHtml}
-    </div>`,
-    sgms: `<div class="admin-card">${sgmAdmin}</div>`,
-    tools: `<div class="admin-card">
-      <div class="eyebrow" style="margin-bottom:8px">Reuse this card next fixture — swap a team name</div>
-      <div class="inline-add" style="flex-wrap:wrap">
-        <input id="swapFind" placeholder="Find (e.g. Scotland)" style="flex:1 1 100%"/>
-        <input id="swapRepl" placeholder="Replace with (e.g. England)" style="flex:1 1 100%"/>
-        <button class="btn sm" data-adm="swapText">Replace across all markets</button>
-      </div>
-      <p class="calc-note" style="margin:8px 0 16px">Renames every outcome containing that text — handles "Scotland" and "2-1 Scotland" alike. Repeat for the second team, then update the event name in the Comp tab. (Odds change per match, so you'll still set prices.)</p>
-      <div class="btn-grid">
-        <button class="btn sm" data-adm="recalc">↻ Refresh scores</button>
-        <button class="btn sm" data-adm="snapshot">📸 Capture rank snapshot</button>
-        <button class="btn sm" data-adm="unlockUser">🔓 Unlock a player's tips</button>
-        <button class="btn sm danger" data-adm="reset">⚠ Reset to seed data</button>
-      </div>
-      <div style="margin-top:10px"><button class="btn sm block ghost" data-adm="logout">Sign out of admin</button></div>
-      <p class="calc-note" style="margin-top:10px">"Capture rank snapshot" freezes today's order so the ▲▼ arrows measure the next round of results. Everything here writes straight to your Supabase database and every player's device updates instantly.</p>
-    </div>`
-  };
-
-  const tabs=[["competition","Comp"],["players","Players"],["markets","Markets"],["sgms","SGMs"],["tools","Tools"]];
-  if(!sections[adminTab]) adminTab="competition";
-  const tabBar=`<div class="admtabs">`+tabs.map(([k,l])=>`<button class="admtab ${k===adminTab?'active':''}" data-admtab="${k}">${esc(l)}</button>`).join("")+`</div>`;
-  modal("Admin panel", state.competition.name, tabBar+sections[adminTab], {wide:true});
-  if(adminTab==="markets") applyMarketFilter();
-}
-
-/* one async helper so each admin action is: write -> resync -> repaint panel */
-async function adminWrite(promise, msg){
-  const { error } = await promise;
-  if(error){ toast("Action failed: "+error.message,"err"); return false; }
-  await commit(msg);
-  if(session.isAdmin && $(".sheet")) renderAdminPanel();
-  return true;
-}
-
-async function handleAdminAction(action, val){
-  switch(action){
-    case "status":
-      return void adminWrite(sb.from("competition").update({status:val}).eq("id",1), "Status → "+val);
-    case "lockAll":
-      return void adminWrite(sb.from("competition").update({status:"Tips Locked"}).eq("id",1), "Tips locked");
-    case "addUser":{
-      const name=(($('[data-add="newUser"]')||{}).value||"").trim();
-      if(!name) return toast("Enter a name","err");
-      return void adminWrite(sb.from("participants").insert({id:uid("p"),name,previous_rank:state.participants.length+1}), "Added "+name);
-    }
-    case "rmUser":
-      return void adminWrite(sb.from("participants").delete().eq("id",val), "Player removed");
-    case "addMarket":{
-      const name=(($('[data-add="newMarket"]')||{}).value||"").trim();
-      if(!name) return toast("Enter a market name","err");
-      const tpl=(($('[data-add="newMarketTpl"]')||{}).value)||"custom";
-      const nextOrder=(state.markets.reduce((mx,m)=>Math.max(mx,m.sortOrder||0),0))+1;
-      const mid=uid("m");
-      const r1=await sb.from("markets").insert({id:mid,name,winning_outcome_ids:null,sort_order:nextOrder});
-      if(r1.error) return toast("Couldn't add market: "+r1.error.message,"err");
-      const labels=templateOutcomes(tpl);
-      if(labels.length){
-        const r2=await sb.from("outcomes").insert(labels.map(l=>({id:uid("o"),market_id:mid,label:l,points:0})));
-        if(r2.error) toast("Market added, but outcomes failed: "+r2.error.message,"err");
-      }
-      await commit("Market added — now set the prices"); if($(".sheet")) renderAdminPanel(); return;
-    }
-    case "rmMarket":
-      return void adminWrite(sb.from("markets").delete().eq("id",val), "Market deleted");
-    case "addOut":{
-      const lab=(($(`[data-add="outLabel:${val}"]`)||{}).value||"").trim();
-      const pts=parseFloat((($(`[data-add="outPts:${val}"]`)||{}).value));
-      if(!lab) return toast("Enter an outcome label","err");
-      if(isNaN(pts)||pts<=0) return toast("Enter a points value","err");
-      return void adminWrite(sb.from("outcomes").insert({id:uid("o"),market_id:val,label:lab,points:round2(pts)}), "Outcome added");
-    }
-    case "rmOut":{
-      const [mid,oid]=val.split(":"); const m=findMarket(mid);
-      if(m && isWinner(m,oid)){ const arr=m.winningOutcomeIds.filter(x=>x!==oid); await sb.from("markets").update({winning_outcome_ids:arr}).eq("id",mid); }
-      return void adminWrite(sb.from("outcomes").delete().eq("id",oid), "Outcome removed");
-    }
-    case "toggleWin":{
-      const [mid,oid]=val.split(":"); const m=findMarket(mid);
-      if(!m) return;
-      const arr = Array.isArray(m.winningOutcomeIds) ? m.winningOutcomeIds.slice() : [];
-      const i=arr.indexOf(oid); if(i>=0) arr.splice(i,1); else arr.push(oid);
-      return void adminWrite(sb.from("markets").update({winning_outcome_ids:arr}).eq("id",mid), arr.length?"Winner updated":"Winners cleared");
-    }
-    case "clearWin":
-      return void adminWrite(sb.from("markets").update({winning_outcome_ids:null}).eq("id",val), "Market unsettled");
-    case "sgmStatus":{
-      const [bid,stt]=val.split(":");
-      return void adminWrite(sb.from("sgm_bets").update({status:stt}).eq("id",bid), "SGM → "+stt);
-    }
-    case "recalc":
-      await commit("Scores refreshed"); if($(".sheet")) renderAdminPanel(); return;
-    case "snapshot":{
-      const rows=computeStandings();
-      const results = await Promise.all(rows.map(r=>sb.from("participants").update({previous_rank:r.rank}).eq("id",r.id)));
-      if(results.some(r=>r.error)) return toast("Snapshot failed","err");
-      await commit("Rank snapshot captured"); if($(".sheet")) renderAdminPanel(); return;
-    }
-    case "unlockUser":
-      return openUnlockChooser();
-    case "doUnlock":
-      return void adminWrite(sb.from("submissions").delete().eq("participant_id",val), "Slip unlocked");
-    case "logout":
-      await sb.auth.signOut(); session.isAdmin=false; closeModal(); toast("Signed out of admin"); return;
-    case "swapText":
-      return swapOutcomeText();
-    case "reset":
-      return resetToSeed();
-  }
-}
-
-function openUnlockChooser(){
-  const submitted = state.submissions.map(s=>findParticipant(s.participantId)).filter(Boolean);
-  if(!submitted.length){ toast("Nobody has submitted yet"); return; }
-  modal("Unlock a slip","Let a player re-submit their tips.",`
-    <p class="calc-note" style="margin-bottom:12px">This deletes the player's current tip slip so they can enter again while the competition is Open.</p>
-    ${submitted.map(p=>`<div class="list-item"><span>${esc(p.name)}</span><button class="btn sm" data-adm="doUnlock" data-val="${p.id}">Unlock</button></div>`).join("")}
-  `,{wide:true});
-}
-
-async function handleAdminEdit(path, value){
-  let patch=null;
-  if(path==="comp.name") patch={name:value};
-  else if(path==="comp.eventName") patch={event_name:value};
-  else if(path==="comp.startTime") patch={start_time:fromLocalInput(value)};
-  if(!patch) return;
-  const { error } = await sb.from("competition").update(patch).eq("id",1);
-  if(error){ toast("Couldn't save: "+error.message,"err"); return; }
-  await loadState(); renderHeader(); renderCountdown();
-}
-function toLocalInput(iso){
-  const d=new Date(iso); if(isNaN(d)) return "";
-  const pad=n=>String(n).padStart(2,"0");
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-function fromLocalInput(v){ const d=new Date(v); return isNaN(d)?v:d.toISOString(); }
-
-async function swapOutcomeText(){
-  const f=((document.getElementById("swapFind")||{}).value||"").trim();
-  const r=((document.getElementById("swapRepl")||{}).value||"");
-  if(!f) return toast("Enter the text to find","err");
-  const updates=[];
-  for(const m of state.markets){ for(const o of m.outcomes){
-    if(o.label.indexOf(f)>=0){ const nl=o.label.split(f).join(r); if(nl!==o.label) updates.push({id:o.id,label:nl}); }
-  }}
-  if(!updates.length) return toast('No outcomes contain "'+f+'"',"err");
-  if(!confirm('Replace "'+f+'" with "'+r+'" in '+updates.length+' outcome'+(updates.length===1?'':'s')+'?')) return;
-  const res=await Promise.all(updates.map(u=>sb.from("outcomes").update({label:u.label}).eq("id",u.id)));
-  if(res.some(x=>x.error)) return toast("Some updates failed","err");
-  await commit("Renamed "+updates.length+" outcome"+(updates.length===1?'':'s'));
-  if($(".sheet")) renderAdminPanel();
-}
-
-async function updateOutcomeLabel(oid, value){
-  const label=(value||"").trim();
-  if(!label) return toast("Outcome name can't be empty","err");
-  const { error } = await sb.from("outcomes").update({label}).eq("id",oid);
-  if(error) return toast("Couldn't rename: "+error.message,"err");
-  await commit("Outcome renamed");
-}
-
-async function updateOutcomePrice(oid, value){
-  const pts=parseFloat(value);
-  if(isNaN(pts)||pts<=0) return toast("Enter a valid price","err");
-  const { error } = await sb.from("outcomes").update({points:round2(pts)}).eq("id",oid);
-  if(error) return toast("Couldn't update price: "+error.message,"err");
-  await commit("Price updated");
-}
-
-async function resetToSeed(){
-  if(!confirm("Reset ALL data back to the seed values? This wipes every tip and SGM and cannot be undone.")) return;
-  try{
-    await sb.from("sgm_bets").delete().neq("id","");
-    await sb.from("submissions").delete().neq("participant_id","");
-    await sb.from("outcomes").delete().neq("id","");
-    await sb.from("markets").delete().neq("id","");
-    await sb.from("participants").delete().neq("id","");
-    await sb.from("competition").delete().neq("id",0);
-    const c=SEED.competition;
-    await sb.from("competition").insert({id:1,name:c.name,event_name:c.eventName,start_time:c.startTime,status:c.status});
-    await sb.from("participants").insert(SEED.participants.map(p=>({id:p.id,name:p.name,previous_rank:p.previousRank})));
-    await sb.from("markets").insert(SEED.markets.map((m,i)=>({id:m.id,name:m.name,winning_outcome_ids:m.winningOutcomeIds,sort_order:i+1})));
-    const outs=[]; SEED.markets.forEach(m=>m.outcomes.forEach(o=>outs.push({id:o.id,market_id:m.id,label:o.label,points:o.points})));
-    await sb.from("outcomes").insert(outs);
-    if(SEED.submissions.length) await sb.from("submissions").insert(SEED.submissions.map(s=>({participant_id:s.participantId,selections:s.selections,locked:true})));
-    if(SEED.sgmBets.length) await sb.from("sgm_bets").insert(SEED.sgmBets.map(b=>({id:b.id,participant_id:b.participantId,url:b.url,description:b.description,stake:b.stake,odds:b.odds,potential_return:b.potentialReturn,status:b.status})));
-    await commit("Reset to seed data");
-    closeModal();
-  }catch(e){ toast("Reset failed: "+(e.message||e),"err"); }
-}
-
-/* =========================================================================
-   PLAYER ACTIONS
-   ========================================================================= */
-async function submitTips(){
-  const pid=state.currentUserId;
-  if(!pid) return toast("Pick your name first","err");
-  if(state.competition.status!=="Open") return toast("Tips are closed","err");
-  if(getSubmission(pid)) return toast("You've already submitted","err");
-  const sel={}; let staked=0, n=0;
-  for(const m of state.markets){
-    const pk=pickOf(draftPicks[m.id]);
-    if(pk && pk.outcomeId && pk.stake>0){ sel[m.id]={outcomeId:pk.outcomeId, stake:round2(pk.stake)}; staked+=pk.stake; n++; }
-  }
-  if(!n) return toast("Back at least one tip with a stake","err");
-  if(round2(staked)>STARTING_BANKROLL) return toast("Over budget — you only have $"+STARTING_BANKROLL,"err");
-  if(!confirm("Lock in "+n+" tip"+(n===1?'':'s')+" for $"+fmtPts(staked)+"? You can't change them after this.")) return;
-  const { error } = await sb.from("submissions").insert({ participant_id:pid, selections:sel, locked:true });
-  if(error){ toast(/duplicate|unique/i.test(error.message)?"You've already submitted":("Couldn't submit: "+error.message),"err"); await commit(); return; }
-  draftPicks={};
-  await commit("Tips locked in 🔒");
-}
-
-async function submitSGM(){
-  const pid=state.currentUserId;
-  if(!pid) return toast("Pick your name first","err");
-  const url=$("#sgmUrl").value.trim(), desc=$("#sgmDesc").value.trim();
-  const stake=parseFloat($("#sgmStake").value), odds=parseFloat($("#sgmOdds").value);
-  let ret=parseFloat($("#sgmReturn").value);
-  if(!desc) return toast("Add a description","err");
-  if(isNaN(stake)||stake<0) return toast("Enter a valid stake","err");
-  if(isNaN(odds)||odds<1) return toast("Enter valid odds","err");
-  if(isNaN(ret)||ret<0) ret=round2(stake*odds);
-  const { error } = await sb.from("sgm_bets").insert({ id:uid("s"), participant_id:pid, url, description:desc, stake:round2(stake), odds:round2(odds), potential_return:round2(ret), status:"pending" });
-  if(error){ toast("Couldn't post: "+error.message,"err"); return; }
-  ["#sgmUrl","#sgmDesc","#sgmStake","#sgmOdds","#sgmReturn"].forEach(s=>$(s).value="");
-  await commit("SGM posted to feed");
-  switchTab("sgm");
-}
-
-/* =========================================================================
-   MODAL / TOAST / TABS
-   ========================================================================= */
-function modal(title, sub, bodyHtml, opts={}){
-  const root=$("#modalRoot");
-  root.innerHTML=`<div class="overlay" data-overlay><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}">
-    <div class="sheet-head"><div><h3>${title}</h3>${sub?`<div class="sub">${esc(sub)}</div>`:""}</div><button class="close" data-close aria-label="Close">✕</button></div>
-    <div class="sheet-body">${bodyHtml}</div></div></div>`;
-  document.body.style.overflow="hidden";
-}
-function closeModal(){ $("#modalRoot").innerHTML=""; document.body.style.overflow=""; }
-
-let toastTimer=null;
-function toast(msg, type){
-  const t=$("#toast"); t.textContent=msg; t.className=(type==="err"?"err ":"")+"show";
-  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.className="",2600);
-}
-
-function switchTab(name){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
-  ["leaderboard","tips","sgm"].forEach(n=>{ $("#tab-"+n).hidden = (n!==name); });
-  window.scrollTo({top:0,behavior:"smooth"});
-}
-
-/* =========================================================================
-   BOOT OVERLAY (connecting / error states)
-   ========================================================================= */
-function bootOverlay(html){
-  let el=document.getElementById("bootOv");
-  if(!el){ el=document.createElement("div"); el.id="bootOv"; el.className="overlay"; document.body.appendChild(el); }
-  el.innerHTML=`<div class="sheet" style="max-width:440px"><div class="sheet-body" style="text-align:center;padding:34px 24px">${html}</div></div>`;
-}
-function clearBoot(){ const el=document.getElementById("bootOv"); if(el) el.remove(); document.body.style.overflow=""; }
-function bootError(msg){
-  document.body.style.overflow="hidden";
-  bootOverlay(`<div style="font-size:30px;margin-bottom:8px">📡</div><strong style="display:block;font-size:16px;margin-bottom:6px">Can't reach the league</strong>
-    <p style="color:var(--text-2);font-size:13.5px;margin:0 0 16px">${esc(msg)}</p>
-    <button class="btn primary" id="retryBoot">Try again</button>`);
-  const r=document.getElementById("retryBoot"); if(r) r.addEventListener("click",boot);
-}
-function friendlyError(e){
-  const m=(e&&e.message)||String(e);
-  if(/relation|does not exist|schema cache/i.test(m)) return "The database tables aren't set up yet. Run setup.sql in the Supabase SQL editor, then retry.";
-  if(/api key|apikey|jwt|invalid|unauthorized|401/i.test(m)) return "The Supabase URL or publishable key looks wrong. Double-check the values at the top of the file.";
-  if(/failed to fetch|network|load/i.test(m)) return "Network problem reaching Supabase. If the project sat idle a week it may be paused — open the dashboard and resume it.";
-  return m;
-}
-
-/* =========================================================================
-   LIVE SYNC — Supabase Realtime pushes every change instantly.
-   A debounced refetch coalesces bursts; a focus + slow backstop covers any
-   dropped socket so the board can never get stuck on stale data.
-   ========================================================================= */
-let channel=null, pollTimer=null, refreshT=null;
-function refreshNow(){
-  if(document.getElementById("bootOv")) return;       // not while disconnected
-  loadState().then(()=>{ renderHeader(); renderLeaderboard(); if(!Object.keys(draftPicks).length) renderTips(); renderSGM(); }).catch(()=>{});
-}
-function scheduleRefresh(){ clearTimeout(refreshT); refreshT=setTimeout(refreshNow, 250); }
-function onVisible(){ if(!document.hidden) scheduleRefresh(); }
-function startLiveSync(){
-  stopLiveSync();
-  const tables=["competition","participants","markets","outcomes","submissions","sgm_bets"];
-  let ch = sb.channel("board-changes");
-  tables.forEach(t=> ch = ch.on("postgres_changes", { event:"*", schema:"public", table:t }, scheduleRefresh));
-  channel = ch.subscribe();
-  document.addEventListener("visibilitychange", onVisible);
-  pollTimer = setInterval(()=>{ if(!document.hidden) refreshNow(); }, Math.max(20, POLL_SECONDS)*1000); // backstop only
-}
-function stopLiveSync(){
-  if(channel){ try{ sb.removeChannel(channel); }catch(e){} channel=null; }
-  if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
-  document.removeEventListener("visibilitychange", onVisible);
-}
-
-/* =========================================================================
-   EVENT WIRING
-   ========================================================================= */
-function wire(){
-  document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>switchTab(t.dataset.tab)));
-
-  $("#userSelect").addEventListener("change",e=>{
-    const id=e.target.value||null;
-    state.currentUserId=id; setLocalUser(id); draftPicks={}; renderAll();
-    if(id) toast("You're "+findParticipant(id).name);
+  }).join("");
+  $("#adminList").querySelectorAll("[data-reset]").forEach(b=>{
+    b.onclick = async ()=>{
+      const id=Number(b.dataset.reset);
+      if (!confirm("Reset this player’s picks? They’ll re-draft on next load.")) return;
+      const { error } = await sb.from("lb_picks").delete().eq("player_id", id);
+      if (error) return toast(error.message);
+      await loadOwners();
+      if (id===state.me.id){ state.myPicks=[]; }
+      toast("Picks reset."); drawAdminList();
+    };
   });
-
-  $("#adminBtn").addEventListener("click",openAdmin);
-
-  $("#sgmFormToggle").addEventListener("click",()=>{
-    const f=$("#sgmForm"); f.hidden=!f.hidden;
-    $("#sgmFormToggle").querySelector(".ttl").textContent=(f.hidden?"＋ Submit an SGM":"− Hide form");
-  });
-  const recalcReturn=()=>{ const s=parseFloat($("#sgmStake").value), o=parseFloat($("#sgmOdds").value);
-    if(!isNaN(s)&&!isNaN(o)&&document.activeElement!==$("#sgmReturn")) $("#sgmReturn").value=round2(s*o); };
-  $("#sgmStake").addEventListener("input",recalcReturn);
-  $("#sgmOdds").addEventListener("input",recalcReturn);
-  $("#sgmSubmit").addEventListener("click",submitSGM);
-
-  document.addEventListener("click",e=>{
-    const at=e.target.closest("[data-admtab]"); if(at){ adminTab=at.dataset.admtab; renderAdminPanel(); return; }
-    const mf=e.target.closest("[data-mktfilter]"); if(mf){ mktFilter=mf.dataset.mktfilter; mf.parentElement.querySelectorAll("[data-mktfilter]").forEach(b=>b.classList.toggle("active", b.dataset.mktfilter===mktFilter)); applyMarketFilter(); return; }
-    const tc=e.target.closest("[data-tipscat]"); if(tc){ tipsCat=tc.dataset.tipscat; renderTips(); return; }
-    const prof=e.target.closest("[data-profile]"); if(prof){ openProfile(prof.dataset.profile); return; }
-    const pick=e.target.closest("[data-pick]");
-    if(pick){
-      const [mid,oid]=pick.dataset.pick.split(":");
-      const prev=pickOf(draftPicks[mid])||{stake:0};
-      draftPicks[mid]={ outcomeId:oid, stake:prev.stake||0 };
-      pick.closest(".outcomes").querySelectorAll(".outcome").forEach(b=>b.classList.remove("sel"));
-      pick.classList.add("sel");
-      const mk=pick.closest(".market");
-      const row=mk && mk.querySelector(".stake-row"); if(row) row.hidden=false;
-      const ms=mk && mk.querySelector(".market-state"); if(ms) ms.textContent="Set your stake";
-      updateStakeUI(mid);
-      return;
-    }
-    const qa=e.target.closest("[data-addstake]");
-    if(qa){
-      const [mid,amt]=qa.dataset.addstake.split(":");
-      const prev=pickOf(draftPicks[mid])||{};
-      const ns=round2((prev.stake||0)+Number(amt));
-      draftPicks[mid]={ outcomeId:prev.outcomeId, stake:ns };
-      const inp=document.querySelector('[data-stake="'+mid+'"]'); if(inp) inp.value=ns;
-      updateStakeUI(mid); return;
-    }
-    const qc=e.target.closest("[data-clearstake]");
-    if(qc){
-      const mid=qc.dataset.clearstake;
-      const prev=pickOf(draftPicks[mid])||{};
-      draftPicks[mid]={ outcomeId:prev.outcomeId, stake:0 };
-      const inp=document.querySelector('[data-stake="'+mid+'"]'); if(inp) inp.value='';
-      updateStakeUI(mid); return;
-    }
-    if(e.target.id==="idpConfirm"){
-      const sel=document.getElementById("idpSelect"); const id=sel?sel.value:"";
-      if(!id) return toast("Pick your name","err");
-      state.currentUserId=id; setLocalUser(id); draftPicks={}; renderAll();
-      toast("Welcome, "+findParticipant(id).name);
-      return;
-    }
-    if(e.target.id==="submitTips"){ submitTips(); return; }
-    const adm=e.target.closest("[data-adm]");
-    if(adm){ handleAdminAction(adm.dataset.adm, adm.dataset.val); return; }
-    if(e.target.closest("[data-close]") || e.target.matches("[data-overlay]")) closeModal();
-  });
-
-  document.addEventListener("blur",e=>{
-    const ed=e.target.closest && e.target.closest("[data-edit]");
-    if(ed){ handleAdminEdit(ed.dataset.edit, ed.value); return; }
-    const el=e.target.closest && e.target.closest("[data-editlabel]");
-    if(el){ updateOutcomeLabel(el.dataset.editlabel, el.value); return; }
-    const eo=e.target.closest && e.target.closest("[data-editout]");
-    if(eo) updateOutcomePrice(eo.dataset.editout, eo.value);
-  },true);
-
-  document.addEventListener("input",e=>{
-    if(e.target.id==="mktSearch"){ filterMarkets(e.target.value); return; }
-    const st=e.target.closest && e.target.closest("[data-stake]");
-    if(!st) return;
-    const mid=st.dataset.stake; let v=parseFloat(st.value); if(isNaN(v)||v<0) v=0;
-    const prev=pickOf(draftPicks[mid])||{};
-    draftPicks[mid]={ outcomeId:prev.outcomeId, stake:v };
-    updateStakeUI(mid);
-  });
-  document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !document.getElementById("bootOv")) closeModal(); });
 }
 
-/* =========================================================================
-   BOOT
-   ========================================================================= */
-async function boot(){
-  document.body.style.overflow="hidden";
-  bootOverlay(`<div style="font-size:30px;margin-bottom:8px">⚡</div><strong style="display:block;font-size:16px">Connecting to the league…</strong>`);
-  try{ if(!sb) initClient(); }
-  catch(e){ bootError(friendlyError(e)); return; }
-  try{ const { data } = await sb.auth.getSession(); session.isAdmin = !!(data && data.session); }catch(e){}
-  try{ await loadState(); }
-  catch(e){ bootError(friendlyError(e)); return; }
-  clearBoot();
-  renderAll(); renderCountdown(); startLiveSync();
-}
-
-if(!window.__wired){ window.__wired=true;
-  const go=()=>{ wire(); boot(); };
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", go);
-  else go();
-}
+boot();
 </script>
 </body>
 </html>
