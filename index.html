@@ -77,12 +77,12 @@
   /* ---- fixture card ---------------------------------------------------- */
   .day-label{font-family:var(--disp); text-transform:uppercase; letter-spacing:.08em;
              color:var(--muted); font-size:14px; margin:20px 0 8px}
-  .game{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  .game{background:var(--panel); border:1px solid var(--cyan); border-radius:12px;
         padding:0; margin-bottom:10px; overflow:hidden}
-  .game.derby{border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan) inset}
-  .derby-flag{background:var(--cyan); color:#04212a; font-family:var(--disp);
-              font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-              font-size:12px; padding:4px 12px}
+  .derby-ribbon{background:linear-gradient(90deg,var(--gold),#e79a1f); color:#3a2600;
+              font-family:var(--disp); font-weight:700; letter-spacing:.06em;
+              text-transform:uppercase; font-size:12px; padding:5px 12px;
+              display:flex; align-items:center; gap:6px}
   .side{display:flex; align-items:flex-start; gap:12px; padding:13px 15px}
   .side + .side{border-top:1px solid var(--line)}
   .side img{width:30px; height:30px; object-fit:contain; margin-top:2px; flex:0 0 30px}
@@ -119,6 +119,27 @@
   .card .lg{font-family:var(--disp); text-transform:uppercase; letter-spacing:.1em;
             font-size:12px; color:var(--muted)}
   .card .nm{font-family:var(--disp); font-size:22px; font-weight:600}
+  .card.clk{cursor:pointer}
+  .card .chev{margin-left:auto; color:var(--muted); font-size:18px; transition:transform .15s}
+  .team-block.open .chev{transform:rotate(180deg); color:var(--cyan)}
+  .team-block.open .card{border-color:var(--cyan); border-radius:12px 12px 0 0}
+  .panel{border:1px solid var(--cyan); border-top:none; border-radius:0 0 12px 12px;
+         background:var(--panel2); padding:14px; display:none}
+  .team-block.open .panel{display:block}
+  .roster{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; margin-top:12px}
+  .player{display:flex; align-items:center; gap:9px; background:var(--panel);
+          border:1px solid var(--line); border-radius:9px; padding:7px 9px}
+  .player img{width:34px; height:34px; border-radius:50%; object-fit:cover; background:var(--panel2); flex:0 0 34px}
+  .player .pn{font-size:13px; font-weight:600; line-height:1.15}
+  .player .pp{font-size:11px; color:var(--muted)}
+  .player .pj{margin-left:auto; font-family:var(--disp); color:var(--muted); font-size:15px}
+  .wk{margin-top:12px; display:flex; flex-direction:column; gap:8px}
+  .wk-row{display:flex; align-items:center; gap:10px; background:var(--panel);
+          border:1px solid var(--line); border-radius:9px; padding:10px 12px}
+  .wk-row .op{flex:1; font-weight:600}
+  .wk-row .dt{color:var(--muted); font-size:12.5px}
+  .wk-row .db{color:var(--gold); font-size:11px; font-family:var(--disp);
+              text-transform:uppercase; letter-spacing:.05em}
 
   /* ---- onboarding / gate ---------------------------------------------- */
   .center{min-height:70vh; display:flex; align-items:center; justify-content:center}
@@ -449,13 +470,12 @@ function sideRow(g, teamId, score){
   </div>`;
 }
 function gameCard(g){
-  const derby = (state.ownersByTeam[g.home_team_id]?.length) && (state.ownersByTeam[g.away_team_id]?.length);
   const fav = g.favorite_team_id ? state.teamsById[g.favorite_team_id] : null;
   const time = new Date(g.starts_at).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
   const status = g.status==="final" ? (g.is_draw?"Draw":"Final")
                : g.status==="in" ? "Live" : time;
-  return `<div class="game ${derby?'derby':''}">
-    ${derby?`<div class="derby-flag">Colleague derby</div>`:""}
+  return `<div class="game">
+    ${g.derby_label?`<div class="derby-ribbon">🔥 ${g.derby_label}</div>`:""}
     ${sideRow(g, g.away_team_id, g.away_score)}
     ${sideRow(g, g.home_team_id, g.home_score)}
     <div class="meta"><span>${LEAGUE_LABEL[g.league]||g.league} · ${status}</span>
@@ -490,19 +510,88 @@ async function renderLeaderboard(){
 }
 
 // ---- my team ----
+const rosterCache = {};
 function renderMyTeam(){
   const byLeague = Object.fromEntries(state.myPicks.map(p=>[p.league,p]));
-  app.innerHTML = `<p class="eyebrow">My team</p>
+  app.innerHTML = `<p class="eyebrow">My team — tap a club to see the squad</p>
     <div class="myteam">
     ${Object.keys(LEAGUE_LABEL).map(lg=>{
-      const p = byLeague[lg]; const t = p?.team;
-      return `<div class="card">
-        ${t?.logo_url?`<img src="${t.logo_url}" alt="">`:`<div style="width:44px"></div>`}
-        <div><div class="lg">${LEAGUE_LABEL[lg]}</div>
-        <div class="nm">${t?t.name:"—"}</div></div></div>`;
+      const t = byLeague[lg]?.team;
+      if(!t) return `<div class="team-block"><div class="card"><div style="width:44px"></div>
+        <div><div class="lg">${LEAGUE_LABEL[lg]}</div><div class="nm">—</div></div></div></div>`;
+      return `<div class="team-block" data-block="${t.id}">
+        <div class="card clk" data-team="${t.id}">
+          ${t.logo_url?`<img src="${t.logo_url}" alt="">`:`<div style="width:44px"></div>`}
+          <div><div class="lg">${LEAGUE_LABEL[lg]}</div><div class="nm">${t.name}</div></div>
+          <span class="chev">⌄</span>
+        </div>
+        <div class="panel" id="panel-${t.id}"></div>
+      </div>`;
     }).join("")}
     </div>
     <p class="warn" style="text-align:left">Locked for the season. Ask an admin if you need a reset.</p>`;
+  app.querySelectorAll(".card.clk").forEach(c=> c.onclick = ()=> toggleTeam(Number(c.dataset.team)));
+}
+
+function toggleTeam(teamId){
+  const block = app.querySelector(`[data-block="${teamId}"]`);
+  if (block.classList.toggle("open")) renderPanel(teamId, "squad");
+}
+
+async function renderPanel(teamId, sub){
+  const panel = document.getElementById(`panel-${teamId}`);
+  panel.innerHTML = `
+    <div class="segmented">
+      <button data-sub="squad" aria-pressed="${sub==='squad'}">Squad</button>
+      <button data-sub="week"  aria-pressed="${sub==='week'}">This week</button>
+    </div>
+    <div id="sub-${teamId}"><div class="empty" style="padding:14px">Loading…</div></div>`;
+  panel.querySelectorAll("[data-sub]").forEach(b=> b.onclick=()=>renderPanel(teamId, b.dataset.sub));
+  const box = document.getElementById(`sub-${teamId}`);
+  if (sub==="squad") box.innerHTML = renderRoster(await loadRoster(teamId));
+  else               box.innerHTML = renderWeek(await loadWeek(teamId), teamId);
+}
+
+async function loadRoster(teamId){
+  if (rosterCache[teamId]) return rosterCache[teamId];
+  const { data } = await sb.from("lb_roster").select("*").eq("team_id", teamId)
+    .order("position",{nullsFirst:false}).order("name");
+  return (rosterCache[teamId] = data||[]);
+}
+function renderRoster(players){
+  if (!players.length) return `<div class="empty" style="padding:14px">No squad data yet.</div>`;
+  return `<div class="roster">${players.map(p=>`
+    <div class="player">
+      ${p.headshot_url?`<img src="${p.headshot_url}" alt="">`
+        :`<div style="width:34px;height:34px;border-radius:50%;background:var(--panel);flex:0 0 34px"></div>`}
+      <div><div class="pn">${p.name||"—"}</div><div class="pp">${p.position||""}</div></div>
+      ${p.jersey?`<span class="pj">${p.jersey}</span>`:""}
+    </div>`).join("")}</div>`;
+}
+
+async function loadWeek(teamId){
+  const now=new Date(); const start=new Date(now); start.setHours(0,0,0,0);
+  const end=new Date(start); end.setDate(end.getDate()+7);
+  const { data } = await sb.from("lb_games").select("*")
+    .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+    .gte("starts_at", start.toISOString()).lt("starts_at", end.toISOString())
+    .order("starts_at");
+  return data||[];
+}
+function renderWeek(games, teamId){
+  if (!games.length) return `<div class="empty" style="padding:14px">No fixtures in the next 7 days.</div>`;
+  return `<div class="wk">${games.map(g=>{
+    const oppId = g.home_team_id===teamId ? g.away_team_id : g.home_team_id;
+    const opp = state.teamsById[oppId];
+    const home = g.home_team_id===teamId;
+    const dt = new Date(g.starts_at).toLocaleString(undefined,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
+    return `<div class="wk-row">
+      <span class="dt">${home?"vs":"@"}</span>
+      <span class="op">${opp?opp.name:"TBD"}</span>
+      ${g.derby_label?`<span class="db">🔥 ${g.derby_label}</span>`:""}
+      <span class="dt">${dt}</span>
+    </div>`;
+  }).join("")}</div>`;
 }
 
 // ---- admin ----
