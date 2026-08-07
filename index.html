@@ -109,7 +109,7 @@
   table.lb tr.me{background:var(--panel)}
   table.lb tr.me .rank{color:var(--cyan)}
   table.lb td.active, table.lb th.active{color:var(--cyan)}
-  .tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px}
+  .tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:8px; margin-bottom:16px}
   .tile{background:var(--panel); border:1px solid var(--line); border-radius:12px;
         padding:11px 12px; cursor:pointer; text-align:left}
   .tile[aria-pressed="true"]{border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan) inset}
@@ -503,9 +503,11 @@ function gameCard(g){
 
 // ---- leaderboard ----
 const METRICS = [
-  { key:"points",  label:"Points",     emoji:"🏆", unit:"pts" },
-  { key:"upsets",  label:"Upsets",     emoji:"🎯", unit:"" },
-  { key:"derbies", label:"Derby wins", emoji:"🔥", unit:"" },
+  { key:"points",   label:"Points",     emoji:"🏆", unit:"pts" },
+  { key:"upsets",   label:"Upsets",     emoji:"🎯", unit:"" },
+  { key:"derbies",  label:"Derby wins", emoji:"🔥", unit:"" },
+  { key:"blowouts", label:"Blowouts",   emoji:"💥", unit:"" },
+  { key:"shutouts", label:"Shutouts",   emoji:"🧱", unit:"" },
 ];
 let lbRows = [];
 const lbSort = { key:"points" };
@@ -547,6 +549,8 @@ function drawLeaderboard(){
       <th>#</th><th>Player</th>
       <th class="${lbSort.key==='upsets'?'active':''}">Ups</th>
       <th class="${lbSort.key==='derbies'?'active':''}">Der</th>
+      <th class="${lbSort.key==='blowouts'?'active':''}">Blw</th>
+      <th class="${lbSort.key==='shutouts'?'active':''}">SO</th>
       <th class="${lbSort.key==='points'?'active':''}">Pts</th>
     </tr></thead><tbody>
     ${rows.map((r,i)=>`<tr class="${r.player===state.me.name?'me':''}">
@@ -554,6 +558,8 @@ function drawLeaderboard(){
       <td>${r.player}</td>
       ${cell(r,'upsets','up')}
       ${cell(r,'derbies')}
+      ${cell(r,'blowouts')}
+      ${cell(r,'shutouts')}
       <td class="pts tnum ${lbSort.key==='points'?'active':''}">${Number(r.points)}</td>
     </tr>`).join("")}
     </tbody></table>`;
@@ -571,11 +577,14 @@ function renderMyTeam(){
     <div class="scoring" id="scoreBox" style="display:none">
       <div class="row"><span class="k">Your team wins (favourite)</span><span class="v">+10</span></div>
       <div class="row"><span class="k">Your team wins as underdog</span><span class="v">+20</span></div>
+      <div class="row"><span class="k">Blowout win — NBA 20+, NFL 17+, EPL 3+ goals 💥</span><span class="v">+5</span></div>
+      <div class="row"><span class="k">NFL shutout — opponent kept scoreless 🧱</span><span class="v">+5</span></div>
       <div class="row"><span class="k">Win in a rivalry Derby 🔥</span><span class="v">+5</span></div>
       <div class="row"><span class="k">Win streak — 2nd in a row, 3rd, 4th…</span><span class="v">+2, +3, +4…</span></div>
       <div class="row"><span class="k">Triple threat — all 3 teams win in a week</span><span class="v">+10</span></div>
+      <div class="row"><span class="k">Double-points round — everything doubles ⚡</span><span class="v">×2</span></div>
       <div class="row"><span class="k">Draw or loss</span><span class="v">0</span></div>
-      <div class="note">Bonuses stack — an underdog derby win on a hot streak piles up. Favourite/underdog is set by the odds before kick-off; a loss or draw resets your streak.</div>
+      <div class="note">Bonuses stack — a 24-0 NFL win pays both the blowout and the shutout, and a derby win on a hot streak piles up fast. Double-points rounds are flagged in advance, so make them count. Favourite/underdog is set by the odds before kick-off; a loss or draw resets your streak.</div>
     </div>
     <div class="myteam">
     ${Object.keys(LEAGUE_LABEL).map(lg=>{
