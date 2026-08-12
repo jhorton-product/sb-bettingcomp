@@ -83,6 +83,15 @@
               font-family:var(--disp); font-weight:700; letter-spacing:.06em;
               text-transform:uppercase; font-size:12px; padding:5px 12px;
               display:flex; align-items:center; gap:6px}
+  /* preseason: exhibition fixtures that are shown but never score — the quiet
+     counterpart to the derby ribbon (muted, dashed, deliberately understated) */
+  .preseason-ribbon{background:var(--panel2); color:var(--muted);
+              border-bottom:1px dashed var(--line);
+              font-family:var(--disp); font-weight:600; letter-spacing:.06em;
+              text-transform:uppercase; font-size:12px; padding:5px 12px;
+              display:flex; align-items:center; gap:6px}
+  .preseason-ribbon .dot{width:6px; height:6px; border-radius:50%;
+              background:var(--muted); flex:0 0 6px}
   .side{display:flex; align-items:flex-start; gap:12px; padding:13px 15px}
   .side + .side{border-top:1px solid var(--line)}
   .side img{width:30px; height:30px; object-fit:contain; margin-top:2px; flex:0 0 30px}
@@ -158,6 +167,9 @@
   .wk-row .dt{color:var(--muted); font-size:12.5px}
   .wk-row .db{color:var(--gold); font-size:11px; font-family:var(--disp);
               text-transform:uppercase; letter-spacing:.05em}
+  .wk-row .pre{color:var(--muted); font-size:11px; font-family:var(--disp);
+              text-transform:uppercase; letter-spacing:.05em;
+              border:1px solid var(--line); border-radius:5px; padding:1px 6px}
 
   /* ---- onboarding / gate ---------------------------------------------- */
   .center{min-height:70vh; display:flex; align-items:center; justify-content:center}
@@ -493,6 +505,7 @@ function gameCard(g){
   const status = g.status==="final" ? (g.is_draw?"Draw":"Final")
                : g.status==="in" ? "Live" : time;
   return `<div class="game">
+    ${g.season_type==='pre'?`<div class="preseason-ribbon"><span class="dot"></span>Preseason · no points</div>`:""}
     ${g.derby_label?`<div class="derby-ribbon">🔥 ${g.derby_label}</div>`:""}
     ${sideRow(g, g.away_team_id, g.away_score)}
     ${sideRow(g, g.home_team_id, g.home_score)}
@@ -662,6 +675,7 @@ function renderWeek(games, teamId){
     return `<div class="wk-row">
       <span class="dt">${home?"vs":"@"}</span>
       <span class="op">${opp?opp.name:"TBD"}</span>
+      ${g.season_type==='pre'?`<span class="pre">Preseason</span>`:""}
       ${g.derby_label?`<span class="db">🔥 ${g.derby_label}</span>`:""}
       <span class="dt">${dt}</span>
     </div>`;
