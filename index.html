@@ -138,6 +138,39 @@
   .pts{font-family:var(--disp); font-size:19px; font-weight:700}
   .up{color:var(--gold)}
 
+  /* ---- player results modal ------------------------------------------- */
+  table.lb tbody tr{cursor:pointer}
+  table.lb tbody tr:hover{background:var(--panel2)}
+  .ovl{position:fixed; inset:0; background:rgba(6,9,18,.66);
+       display:flex; align-items:center; justify-content:center; padding:18px; z-index:60}
+  .modal{background:var(--panel); border:1px solid var(--line); border-radius:16px;
+         width:100%; max-width:440px; max-height:86vh; overflow:auto;
+         box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .modal-h{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+           padding:17px 18px 13px; border-bottom:1px solid var(--line)}
+  .modal-h .who{font-family:var(--disp); font-size:22px; font-weight:700; letter-spacing:.03em;
+                text-transform:uppercase; line-height:1}
+  .modal-h .sub{font-size:12px; color:var(--muted); margin-top:4px}
+  .modal-h .x{background:none; border:none; color:var(--muted); font-size:22px; line-height:1;
+              padding:0 2px}
+  .modal-h .x:hover{color:var(--chalk)}
+  .form{display:flex; flex-direction:column; gap:7px; padding:14px 18px 18px}
+  .fr{display:flex; align-items:center; gap:10px; background:var(--panel2);
+      border:1px solid var(--line); border-radius:10px; padding:9px 11px}
+  .fr .res{font-family:var(--disp); font-weight:700; font-size:14px; width:23px; height:23px;
+           border-radius:6px; display:flex; align-items:center; justify-content:center; flex:0 0 23px}
+  .fr .res.W{background:rgba(90,209,154,.16); color:var(--win)}
+  .fr .res.L{background:rgba(226,96,122,.16); color:var(--loss)}
+  .fr .res.D{background:var(--panel); color:var(--muted)}
+  .fr .mu{flex:1; min-width:0}
+  .fr .mu .tt{font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .fr .mu .sc{font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:1px}
+  .fr .lgt{font-family:var(--disp); text-transform:uppercase; letter-spacing:.06em;
+           font-size:10.5px; color:var(--muted); border:1px solid var(--line);
+           border-radius:5px; padding:2px 6px; flex:0 0 auto}
+  .fr .pp{font-family:var(--disp); font-weight:700; font-size:14px; color:var(--cyan); flex:0 0 auto}
+  .form .empty{padding:22px 16px}
+
   /* ---- my team --------------------------------------------------------- */
   .myteam{display:grid; grid-template-columns:1fr; gap:12px}
   .card{background:var(--panel); border:1px solid var(--line); border-radius:12px;
@@ -566,7 +599,7 @@ function drawLeaderboard(){
       <th class="${lbSort.key==='shutouts'?'active':''}">SO</th>
       <th class="${lbSort.key==='points'?'active':''}">Pts</th>
     </tr></thead><tbody>
-    ${rows.map((r,i)=>`<tr class="${r.player===state.me.name?'me':''}">
+    ${rows.map((r,i)=>`<tr class="${r.player===state.me.name?'me':''}" data-player="${r.player}" title="Recent results">
       <td class="rank tnum">${i+1}</td>
       <td>${r.player}</td>
       ${cell(r,'upsets','up')}
@@ -579,6 +612,60 @@ function drawLeaderboard(){
 
   box.querySelectorAll(".tile").forEach(t=>
     t.onclick = ()=>{ lbSort.key = t.dataset.metric; drawLeaderboard(); });
+
+  box.querySelectorAll("table.lb tbody tr").forEach(tr=>
+    tr.onclick = ()=> openPlayerResults(tr.dataset.player));
+}
+
+// ---- recent-results modal ----
+function closeResults(){
+  const o = $("#resOvl"); if (o) o.remove();
+  document.removeEventListener("keydown", resKey);
+}
+function resKey(e){ if (e.key==="Escape") closeResults(); }
+
+async function openPlayerResults(name){
+  const p = state.players.find(x=>x.name===name);
+  if (!p) return;
+  closeResults();
+  const ovl = document.createElement("div");
+  ovl.className = "ovl"; ovl.id = "resOvl";
+  ovl.innerHTML = `<div class="modal" role="dialog" aria-label="Recent results for ${name}">
+    <div class="modal-h">
+      <div><div class="who">${name}</div><div class="sub">Last 5 results</div></div>
+      <button class="x" aria-label="Close">×</button>
+    </div>
+    <div class="form" id="resForm"><div class="empty">Loading…</div></div>
+  </div>`;
+  document.body.appendChild(ovl);
+  ovl.addEventListener("click", e=>{ if (e.target===ovl) closeResults(); });
+  ovl.querySelector(".x").onclick = closeResults;
+  document.addEventListener("keydown", resKey);
+
+  const { data, error } = await sb.rpc("lb_player_recent_results", { p_player_id: p.id });
+  const form = $("#resForm"); if (!form) return;
+  if (error){ form.innerHTML = `<div class="empty">${error.message}</div>`; return; }
+  const rows = data||[];
+  if (!rows.length){
+    form.innerHTML = `<div class="empty"><b>No results yet</b>
+      Results appear here once ${name}’s teams have played.</div>`;
+    return;
+  }
+  form.innerHTML = rows.map(r=>{
+    const vs   = r.venue==="H" ? "v" : "@";
+    const opp  = r.opponent_abbrev || r.opponent;
+    const team = r.team_abbrev || r.team;
+    const lg   = LEAGUE_LABEL[r.league] || r.league;
+    const pts  = Number(r.points)>0 ? `<div class="pp">+${Number(r.points)}</div>` : "";
+    return `<div class="fr">
+      <div class="res ${r.result}">${r.result}</div>
+      <div class="mu">
+        <div class="tt">${team} <span style="color:var(--muted)">${vs}</span> ${opp}</div>
+        <div class="sc">${r.team_score}–${r.opp_score}</div>
+      </div>
+      <div class="lgt">${lg}</div>${pts}
+    </div>`;
+  }).join("");
 }
 
 // ---- my team ----
