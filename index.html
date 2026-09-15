@@ -127,6 +127,8 @@
   .tile .tw{font-family:var(--disp); font-size:16px; font-weight:600; margin-top:7px;
             line-height:1.05; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .tile .tvv{font-size:12px; color:var(--cyan); margin-top:2px}
+  .tile .tw .tie{font-family:var(--body); font-weight:500; font-size:11px; color:var(--muted);
+                 letter-spacing:0; text-transform:none}
   .infline{display:inline-flex; align-items:center; gap:5px; color:var(--cyan);
            cursor:pointer; font-size:13px; margin:2px 0 4px}
   .scoring{background:var(--panel); border:1px solid var(--line); border-radius:10px;
@@ -578,9 +580,10 @@ function drawLeaderboard(){
   const tiles = METRICS.map(m=>{
     const top = [...lbRows].sort((a,b)=> Number(b[m.key])-Number(a[m.key]) || Number(b.points)-Number(a.points))[0];
     const val = top ? Number(top[m.key]) : 0;
+    const tied = val>0 ? lbRows.filter(r=>Number(r[m.key])===val).length - 1 : 0;
     return `<div class="tile" data-metric="${m.key}" aria-pressed="${lbSort.key===m.key}">
       <div class="tl">${m.emoji} ${m.label}</div>
-      <div class="tw">${val>0 ? top.player : "—"}</div>
+      <div class="tw">${val>0 ? top.player : "—"}${tied>0?` <span class="tie">+${tied} tied</span>`:""}</div>
       <div class="tvv">${val>0 ? val+(m.unit?" "+m.unit:"") : "no one yet"}</div>
     </div>`;
   }).join("");
